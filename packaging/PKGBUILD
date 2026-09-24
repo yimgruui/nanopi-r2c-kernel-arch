@@ -90,7 +90,7 @@ package() {
 
     local _subst="
         s|%PKGBASE%|${pkgbase}|g
-        s|%KERVER%|${kernver}|g
+        s|%KERNVER%|${kernver}|g
     "
     sed "$_subst" "${srcdir}/linux-nanopi-r2c-minimal.preset" | \
         install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
