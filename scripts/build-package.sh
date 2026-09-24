@@ -43,8 +43,8 @@ if [ "${PUBLISH_REPO:-0}" = 1 ]; then
 fi
 
 # Print the public key path when a signing key was exported.
-if [ -f "$ROOT/keys/nanopi-r2s-kernel-arch.pub" ]; then
-    echo "Public key: keys/nanopi-r2s-kernel-arch.pub"
+if [ -f "$ROOT/keys/nanopi-r2c-kernel-arch.pub" ]; then
+    echo "Public key: keys/nanopi-r2c-kernel-arch.pub"
 fi
 
 echo "Build complete."
