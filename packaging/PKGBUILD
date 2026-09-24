@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# NanoPi R2S kernel, aligned with Arch Linux ARM linux-aarch64.
+# NanoPi R2C kernel, aligned with Arch Linux ARM linux-aarch64.
+#
+# R2C vs R2S: same RK3328 platform; WAN PHY is Motorcomm YT8521S (needs
+# CONFIG_MOTORCOMM_PHY, set in config/fragment.r2c). eBPF support requires
+# CONFIG_DEBUG_INFO_BTF, which needs pahole at build time.
 
-pkgname=linux-nanopi-r2s-minimal
-pkgbase=linux-nanopi-r2s-minimal
+pkgname=linux-nanopi-r2c-minimal
+pkgbase=linux-nanopi-r2c-minimal
 pkgver=7.1.1
 pkgrel=1
 _srcname=linux-7.1
-_desc="NanoPi R2S router profile (ALARM-aligned)"
+_desc="NanoPi R2C router profile (ALARM-aligned)"
 arch=('aarch64')
 url="https://github.com/torvalds/linux"
 license=('GPL-2.0-only')
@@ -15,10 +19,10 @@ optdepends=('linux-firmware-realtek: RTL8153 USB Ethernet firmware')
 provides=("linux=${pkgver}" "linux-aarch64=${pkgver}" "WIREGUARD-MODULE")
 conflicts=('linux' 'linux-aarch64')
 options=('!strip' '!debug')
-install=linux-nanopi-r2s-minimal.install
+install=linux-nanopi-r2c-minimal.install
 
 makedepends=(
-    'kmod' 'bc' 'dtc' 'python' 'openssl' 'libelf'
+    'kmod' 'bc' 'dtc' 'python' 'openssl' 'libelf' 'pahole'
     'aarch64-linux-gnu-gcc' 'aarch64-linux-gnu-binutils'
 )
 
@@ -26,10 +30,10 @@ makedepends=(
 source=(
     "${_srcname}.tar.xz"
     'config.merged'
-    'linux-nanopi-r2s-minimal.preset'
-    'mkinitcpio.linux-nanopi-r2s-minimal.conf'
+    'linux-nanopi-r2c-minimal.preset'
+    'mkinitcpio.linux-nanopi-r2c-minimal.conf'
     'r8152-led-config-from-of.patch'
-    'rk3328-nanopi-r2s-r8153-led-data.patch'
+    'rk3328-nanopi-r2c-r8153-led-data.patch'
 )
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
@@ -42,21 +46,23 @@ export ARCH=arm64
 export CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}"
 export LOCALVERSION=""
 
-# NanoPi R2S only — avoid installing the full Rockchip DTB tree (~50+ MiB).
-_r2s_dtb=rockchip/rk3328-nanopi-r2s.dtb
-_r2s_dtb_path=arch/arm64/boot/dts/${_r2s_dtb}
+# NanoPi R2C only — avoid installing the full Rockchip DTB tree (~50+ MiB).
+_r2c_dtb=rockchip/rk3328-nanopi-r2c.dtb
+_r2c_dtb_path=arch/arm64/boot/dts/${_r2c_dtb}
 
 prepare() {
     cd "$_srcname"
 
     echo "-${pkgrel}" > localversion.10-pkgrel
-    echo "-nanopi-r2s-minimal" > localversion.20-pkgname
+    echo "-nanopi-r2c-minimal" > localversion.20-pkgname
 
     if [[ $pkgver != ${_srcname#linux-} ]]; then
         patch -p1 -N < "../patch-${pkgver}"
     fi
+    # r8152: allow LED config from device tree (OpenWrt-derived, not upstream)
     patch -p1 -N < "${srcdir}/r8152-led-config-from-of.patch"
-    patch -p1 -N < "${srcdir}/rk3328-nanopi-r2s-r8153-led-data.patch"
+    # rk3328-nanopi-r2c.dts: add realtek,led-data to the RTL8153 node
+    patch -p1 -N < "${srcdir}/rk3328-nanopi-r2c-r8153-led-data.patch"
 
     cp "${srcdir}/config.merged" ./.config
     make olddefconfig
@@ -66,30 +72,30 @@ build() {
     cd "$_srcname"
 
     make Image modules
-    make DTC_FLAGS="-@" "$_r2s_dtb"
+    make DTB_FLAGS="-@" "$_r2c_dtb"
     make -s kernelrelease > version
 }
 
 package() {
-    pkgdesc="Linux kernel for NanoPi R2S - ${_desc}"
+    pkgdesc="Linux kernel for NanoPi R2C - ${_desc}"
     cd "$_srcname"
     local kernver="$(<version)"
     local modulesdir="$pkgdir/usr/lib/modules/$kernver"
 
     install -Dm644 arch/arm64/boot/Image -t "${pkgdir}/boot"
-    install -Dm644 "$_r2s_dtb_path" "${pkgdir}/boot/dtbs/${_r2s_dtb}"
+    install -Dm644 "$_r2c_dtb_path" "${pkgdir}/boot/dtbs/${_r2c_dtb}"
     make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
         DEPMOD=/doesnt/exist modules_install
     rm -f "$modulesdir"/build
 
     local _subst="
         s|%PKGBASE%|${pkgbase}|g
-        s|%KERNVER%|${kernver}|g
+        s|%KERVER%|${kernver}|g
     "
-    sed "$_subst" "${srcdir}/linux-nanopi-r2s-minimal.preset" |
+    sed "$_subst" "${srcdir}/linux-nanopi-r2c-minimal.preset" | \
         install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-    install -Dm644 "${srcdir}/mkinitcpio.linux-nanopi-r2s-minimal.conf" \
-        "${pkgdir}/etc/mkinitcpio.linux-nanopi-r2s-minimal.conf"
+    install -Dm644 "${srcdir}/mkinitcpio.linux-nanopi-r2c-minimal.conf" \
+        "${pkgdir}/etc/mkinitcpio.linux-nanopi-r2c-minimal.conf"
 
     install -d "${pkgdir}/usr/lib/initcpio"
     echo "trigger mkinitcpio" > "${pkgdir}/usr/lib/initcpio/.${pkgbase}-${pkgver}"
