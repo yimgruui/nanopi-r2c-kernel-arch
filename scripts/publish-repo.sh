@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_DIR="${REPO_DIR:-$ROOT/repo/aarch64}"
-PKG_GLOB="${PKG_GLOB:-$ROOT/build/linux-nanopi-r2s-minimal-*.pkg.tar.zst}"
+PKG_GLOB="${PKG_GLOB:-$ROOT/build/linux-nanopi-r2c-minimal-*.pkg.tar.zst}"
 
 mkdir -p "$REPO_DIR"
 shopt -s nullglob
@@ -26,7 +26,7 @@ done
 
 (
     cd "$REPO_DIR"
-    db="nanopi-r2s-kernel-arch.db.tar.gz"
+    db="nanopi-r2c-kernel-arch.db.tar.gz"
     names=( "${pkgs[@]##*/}" )
     echo "==> repo-add ${#names[@]} package(s)"
     repo_add_flags=()
@@ -35,14 +35,14 @@ done
     fi
     repo-add "${repo_add_flags[@]}" "$db" "${names[@]}"
     for kind in db files; do
-        compressed="nanopi-r2s-kernel-arch.${kind}.tar.gz"
-        plain="nanopi-r2s-kernel-arch.${kind}"
+        compressed="nanopi-r2c-kernel-arch.${kind}.tar.gz"
+        plain="nanopi-r2c-kernel-arch.${kind}"
         [ -f "$compressed" ] || continue
         rm -f "$plain" "${plain}.sig"
         cp "$compressed" "$plain"
         [ -f "${compressed}.sig" ] && cp "${compressed}.sig" "${plain}.sig"
     done
-    sha256sum linux-nanopi-r2s-minimal-*.pkg.tar.zst > SHA256SUMS 2>/dev/null || true
+    sha256sum linux-nanopi-r2c-minimal-*.pkg.tar.zst > SHA256SUMS 2>/dev/null || true
 )
 
 echo "Repo published under $REPO_DIR"
