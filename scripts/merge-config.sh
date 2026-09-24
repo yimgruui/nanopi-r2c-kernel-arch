@@ -9,8 +9,8 @@ OUT="${2:-$ROOT/build/config.merged}"
 BASE="${3:-$ROOT/build/alarm.config}"
 
 FRAGMENTS=(
-    "$ROOT/config/fragment.r2s"
     "$ROOT/config/fragment.prune"
+    "$ROOT/config/fragment.r2c"
 )
 
 [ -f "$BASE" ] || {
