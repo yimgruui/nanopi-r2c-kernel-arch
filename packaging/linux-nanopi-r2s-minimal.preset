@@ -1,8 +1,0 @@
-# mkinitcpio preset for NanoPi R2S kernel package (linux-nanopi-r2s-minimal)
-
-ALL_kver="%KERNVER%"
-
-PRESETS=('default')
-
-default_image="/boot/initramfs-linux.img"
-default_config="/etc/mkinitcpio.linux-nanopi-r2s-minimal.conf"
