@@ -1,4 +1,4 @@
-name: Build NanoPi R2S kernel (linux-nanopi-r2s-minimal)
+name: Build NanoPi R2C kernel (linux-nanopi-r2c-minimal)
 
 on:
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
             bc dtc python \
             git curl xz \
             openssl libelf \
-            gnupg ccache
+            gnupg ccache pahole
 
       - name: Fetch ALARM metadata
         run: ./scripts/fetch-alarm-sources.sh
@@ -66,7 +66,7 @@ jobs:
           if [ -n "$REQUESTED_PKGVER" ]; then
             pv="$REQUESTED_PKGVER"
             pr="$REQUESTED_PKGREL"
-            [[ "$pv" =~ ^[0-9]+\.[0-9]+([.][0-9]+)*([._+-][0-9A-Za-z]+)*$ ]] || {
+            [[ "$pv" =~ ^[0-9]+\.[0-9]+([.][0-9]+)*([.]+[-]?[0-9A-Za-z]+)*$ ]] || {
               echo "Error: invalid pkgver: $pv" >&2
               exit 1
             }
@@ -98,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF_NAME" = "${{ github.event.repository.default_branch }}" ]; then
-            tag="linux-nanopi-r2s-minimal-${{ steps.ver.outputs.pkgver }}-${{ steps.ver.outputs.pkgrel }}"
+            tag="linux-nanopi-r2c-minimal-${{ steps.ver.outputs.pkgver }}-${{ steps.ver.outputs.pkgrel }}"
             title="$tag"
             prerelease=false
           else
@@ -108,7 +108,7 @@ jobs:
             prerelease=true
           fi
           {
-            echo "artifact_name=linux-nanopi-r2s-minimal-${{ steps.ver.outputs.pkgver }}-${{ steps.ver.outputs.pkgrel }}"
+            echo "artifact_name=linux-nanopi-r2c-minimal-${{ steps.ver.outputs.pkgver }}-${{ steps.ver.outputs.pkgrel }}"
             echo "release_tag=$tag"
             echo "release_title=$title"
             echo "prerelease=$prerelease"
@@ -140,22 +140,22 @@ jobs:
 
       - name: Prepare signing key
         env:
-          NANOPI_R2S_KERNEL_PACMAN_KEY: ${{ secrets.NANOPI_R2S_KERNEL_PACMAN_KEY }}
+          NANOPI_R2C_KERNEL_PACMAN_KEY: ${{ secrets.NANOPI_R2C_KERNEL_PACMAN_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${NANOPI_R2S_KERNEL_PACMAN_KEY:-}" ]; then
-            echo "Error: NANOPI_R2S_KERNEL_PACMAN_KEY secret is required for public release builds." >&2
+          if [ -z "${NANOPI_R2C_KERNEL_PACMAN_KEY:-}" ]; then
+            echo "Error: NANOPI_R2C_KERNEL_PACMAN_KEY secret is required for public release builds." >&2
             exit 1
           fi
 
           mkdir -p keys
-          echo "$NANOPI_R2S_KERNEL_PACMAN_KEY" | base64 -d > keys/signing.key
+          echo "$NANOPI_R2C_KERNEL_PACMAN_KEY" | base64 -d > keys/signing.key
           chmod 600 keys/signing.key
           gpg --import keys/signing.key
           KEY_ID=$(gpg --with-colons --list-secret-keys | awk -F: '/^sec:/ {print $5; exit}')
           echo "PACMAN_KEY_PATH=$GITHUB_WORKSPACE/keys/signing.key" >> "$GITHUB_ENV"
           echo "PACMAN_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
-          gpg --export -a "$KEY_ID" > keys/nanopi-r2s-kernel-arch.pub
+          gpg --export -a "$KEY_ID" > keys/nanopi-r2c-kernel-arch.pub
 
       - name: Create build user
         run: |
@@ -195,15 +195,15 @@ jobs:
           cp LICENSES/*.txt repo/aarch64/LICENSES/
           (
             cd repo/aarch64
-            sha256sum linux-nanopi-r2s-minimal-*.pkg.tar.zst \
+            sha256sum linux-nanopi-r2c-minimal-*.pkg.tar.zst \
               SOURCE_INFO.txt config.merged LICENSES/*.txt > SHA256SUMS
           )
-          sha256sum build/linux-nanopi-r2s-minimal-*.pkg.tar.zst \
-            build/linux-nanopi-r2s-minimal-*.pkg.tar.zst.sig \
-            build/linux-nanopi-r2s-minimal-*.src.tar.gz \
+          sha256sum build/linux-nanopi-r2c-minimal-*.pkg.tar.zst \
+            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig \
+            build/linux-nanopi-r2c-minimal-*.src.tar.gz \
             build/SOURCE_INFO.txt build/config.merged LICENSES/*.txt \
             > build/SHA256SUMS
-          [ ! -f keys/nanopi-r2s-kernel-arch.pub ] || cp keys/nanopi-r2s-kernel-arch.pub repo/aarch64/
+          [ ! -f keys/nanopi-r2c-kernel-arch.pub ] || cp keys/nanopi-r2c-kernel-arch.pub repo/aarch64/
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
@@ -211,15 +211,15 @@ jobs:
           name: ${{ steps.release.outputs.artifact_name }}
           if-no-files-found: error
           path: |
-            build/linux-nanopi-r2s-minimal-*.pkg.tar.zst
-            build/linux-nanopi-r2s-minimal-*.pkg.tar.zst.sig
-            build/linux-nanopi-r2s-minimal-*.src.tar.gz
+            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst
+            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig
+            build/linux-nanopi-r2c-minimal-*.src.tar.gz
             build/SHA256SUMS
             build/SOURCE_INFO.txt
             build/config.merged
             LICENSES/*.txt
             repo/aarch64/
-            keys/nanopi-r2s-kernel-arch.pub
+            keys/nanopi-r2c-kernel-arch.pub
 
       - name: Upload pacman repo for GitHub Pages
         if: github.ref_name == github.event.repository.default_branch
@@ -270,14 +270,14 @@ jobs:
           repo="${GITHUB_REPOSITORY:?}"
           sha="${GITHUB_SHA:?}"
           assets=(
-            build/linux-nanopi-r2s-minimal-*.pkg.tar.zst
-            build/linux-nanopi-r2s-minimal-*.pkg.tar.zst.sig
-            build/linux-nanopi-r2s-minimal-*.src.tar.gz
+            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst
+            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig
+            build/linux-nanopi-r2c-minimal-*.src.tar.gz
             build/SHA256SUMS
             build/SOURCE_INFO.txt
             build/config.merged
             LICENSES/*.txt
-            keys/nanopi-r2s-kernel-arch.pub
+            keys/nanopi-r2c-kernel-arch.pub
           )
           for asset in "${assets[@]}"; do
             [ -f "$asset" ] || {
@@ -288,9 +288,9 @@ jobs:
           release_flags=()
           if [ "${{ needs.build.outputs.prerelease }}" = true ]; then
             release_flags+=(--prerelease)
-            notes="Unofficial NanoPi R2S minimal kernel ${tag} validation build. This branch build does not deploy the pacman repository. Source package and merged config are included."
+            notes="Unofficial NanoPi R2C minimal kernel ${tag} validation build. This branch build does not deploy the pacman repository. Source package and merged config are included."
           else
-            notes="Unofficial NanoPi R2S minimal kernel ${tag}. Pacman repo: https://therealcoder1337.github.io/nanopi-r2s-kernel-arch/aarch64. Source package and merged config are included."
+            notes="Unofficial NanoPi R2C minimal kernel ${tag}. Pacman repo: https://therealcoder1337.github.io/nanopi-r2c-kernel-arch/aarch64. Source package and merged config are included."
           fi
 
           if gh release view --repo "$repo" "$tag" >/dev/null 2>&1; then
