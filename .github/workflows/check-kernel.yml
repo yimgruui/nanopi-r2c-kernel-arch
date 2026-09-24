@@ -38,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="linux-nanopi-r2s-minimal-${{ steps.alarm_ver.outputs.current }}"
+          tag="linux-nanopi-r2c-minimal-${{ steps.alarm_ver.outputs.current }}"
           if gh release view --repo "${{ github.repository }}" "$tag" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Release already exists: $tag"
