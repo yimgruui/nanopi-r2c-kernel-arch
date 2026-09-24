@@ -1,5 +1,0 @@
-# NanoPi R2S kernel pacman repo
-
-[nanopi-r2s-kernel-arch]
-SigLevel = Required
-Server = https://therealcoder1337.github.io/nanopi-r2s-kernel-arch/aarch64

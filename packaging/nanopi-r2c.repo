@@ -1,0 +1,5 @@
+# NanoPi R2C kernel pacman repo
+
+[nanopi-r2c-kernel-arch]
+SigLevel = Required
+Server = https://yimgruui.github.io/nanopi-r2c-kernel-arch/aarch64
