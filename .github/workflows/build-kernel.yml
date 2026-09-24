@@ -17,8 +17,11 @@ concurrency:
   cancel-in-progress: false
 
 defaults:
-  run:
+ run:
     shell: bash
+
+env:
+ TZ: Asia/Shanghai
 
 jobs:
   build:
