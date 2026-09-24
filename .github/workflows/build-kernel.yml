@@ -21,7 +21,7 @@ defaults:
     shell: bash
 
 env:
- TZ: Asia/Shanghai
+  TZ: Asia/Shanghai
 
 jobs:
   build:
