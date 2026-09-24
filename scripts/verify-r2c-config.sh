@@ -9,6 +9,8 @@ CFG="${1:?path to .config required}"
     exit 1
 }
 
+error_count=0
+
 require_value() {
     local expected="$1" sym
     shift
