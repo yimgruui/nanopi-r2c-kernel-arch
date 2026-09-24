@@ -23,6 +23,15 @@ CONFIG_ARM64_ERRATUM_843419=y
 CONFIG_STMMAC_ETH=y
 CONFIG_STMMAC_PLATFORM=y
 CONFIG_DWMAC_ROCKCHIP=y
+# R2C note: the on-board WAN PHY is a Motorcomm YT8521S (the R2S uses a Realtek
+# RTL8211E), so CONFIG_MOTORCOMM_PHY is mandatory. CONFIG_DEBUG_INFO_BTF is
+# required by eBPF programs (e.g. Landscape); needs pahole at build time.
+# If the ALARM baseline selects DEBUG_INFO_NONE, also add:
+#   CONFIG_DEBUG_INFO_NONE=n
+#   CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
+CONFIG_MOTORCOMM_PHY=y
+CONFIG_DEBUG_INFO=y
+CONFIG_DEBUG_INFO_BTF=y
 # Keep the internal RTL8153 LAN driver modular so its firmware is available from rootfs.
 CONFIG_USB_RTL8152=m
 CONFIG_USB_NET_DRIVERS=y
