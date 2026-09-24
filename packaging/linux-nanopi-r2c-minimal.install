@@ -1,5 +1,5 @@
 post_install() {
-    echo "NanoPi R2S kernel installed. The pacman hook regenerates the initramfs."
+    echo "NanoPi R2C kernel installed. The pacman hook regenerates the initramfs."
     echo "mkinitcpio may warn that no modules were added; this is normal when boot drivers are built in."
     echo "Encrypted root filesystems still need the required mkinitcpio hooks/modules."
 }
