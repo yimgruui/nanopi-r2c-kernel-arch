@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail fast if merged config misses NanoPi R2S critical options.
+# Fail fast if merged config misses NanoPi R2C critical options.
 set -euo pipefail
 
 CFG="${1:?path to .config required}"
@@ -24,6 +24,7 @@ require_value y \
     CONFIG_STMMAC_ETH \
     CONFIG_STMMAC_PLATFORM \
     CONFIG_DWMAC_ROCKCHIP \
+    CONFIG_MOTORCOMM_PHY \
     CONFIG_REALTEK_PHY \
     CONFIG_WIREGUARD \
     CONFIG_NF_TABLES \
@@ -31,7 +32,8 @@ require_value y \
     CONFIG_NF_NAT \
     CONFIG_BRIDGE \
     CONFIG_VLAN_8021Q \
-    CONFIG_XFRM_USER
+    CONFIG_XFRM_USER \
+    CONFIG_DEBUG_INFO_BTF
 
 require_value y \
     CONFIG_ARM64_ERRATUM_826319 \
@@ -158,4 +160,9 @@ require_value 'y|m' \
     CONFIG_NET_ACT_MIRRED \
     CONFIG_NET_ACT_POLICE
 
-echo "R2S config checks passed: $CFG"
+if [ "$error_count" -gt 0 ]; then
+    echo "Error: $error_count config check(s) failed" >&2
+    exit 1
+fi
+
+echo "R2C config checks passed: $CFG"
