@@ -17,12 +17,12 @@ ALARM_VERSION_FILE="${ALARM_VERSION_FILE:-$BUILD/alarm-version.env}"
 source "$ALARM_VERSION_FILE"
 
 repo_commit="${GITHUB_SHA:-$(git -C "$ROOT" rev-parse HEAD)}"
-repo_web_url="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-therealcoder1337/nanopi-r2s-kernel-arch}"
-source_package="linux-nanopi-r2s-minimal-${pkgver}-${pkgrel}.src.tar.gz"
+repo_web_url="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-therealcoder1337/nanopi-r2c-kernel-arch}"
+source_package="linux-nanopi-r2c-minimal-${pkgver}-${pkgrel}.src.tar.gz"
 
 mkdir -p "$(dirname "$OUT")"
 cat > "$OUT" <<EOF
-Package: linux-nanopi-r2s-minimal-${pkgver}-${pkgrel}
+Package: linux-nanopi-r2c-minimal-${pkgver}-${pkgrel}
 Repository: ${repo_web_url}
 Repository commit: ${repo_commit}
 ALARM PKGBUILDs: ${alarm_repo}
