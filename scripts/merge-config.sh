@@ -72,6 +72,7 @@ for key in "${!EXPECTED_VAL[@]}"; do
     fi
     if ! grep -Fqx "${key}=${val}" "$KDIR/.config"; then
         echo "Error: ${key}=${val} not present after olddefconfig (missing/renamed?)" >&2
+        echo "       actual: $(grep -E "^${key}[=(]|^# ${key} is not set" "$KDIR/.config" 2>/dev/null || echo 'symbol absent entirely')" >&2
         error_count=$((error_count + 1))
     fi
 done
