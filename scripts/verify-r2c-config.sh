@@ -162,6 +162,22 @@ require_value 'y|m' \
     CONFIG_NET_ACT_MIRRED \
     CONFIG_NET_ACT_POLICE
 
+require_value y \
+    CONFIG_BPF \
+    CONFIG_BPF_SYSCALL \
+    CONFIG_BPF_JIT \
+    CONFIG_BPF_JIT_DEFAULT_ON \
+    CONFIG_BPF_UNPRIV_DEFAULT_OFF \
+    CONFIG_BPF_LSM \
+    CONFIG_BPF_EVENTS \
+    CONFIG_BPF_STREAM_PARSER \
+    CONFIG_LWTUNNEL_BPF \
+    CONFIG_IPV6_SEG6_BPF \
+    CONFIG_NETFILTER_BPF_LINK
+
+require_value m \
+    CONFIG_NETFILTER_XT_MATCH_BPF
+
 if [ "$error_count" -gt 0 ]; then
     echo "Error: $error_count config check(s) failed" >&2
     exit 1
