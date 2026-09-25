@@ -69,6 +69,17 @@ CONFIG_WIREGUARD=y
 CONFIG_PERF_EVENTS=y          # dependency of CONFIG_BPF_EVENTS (prune may cut it)
 CONFIG_SECURITYFS=y           # dependency of CONFIG_BPF_LSM
 
+# PPPoE (common ISP dial-up; userland needs pppd or rp-pppoe)
+CONFIG_PPP=m
+CONFIG_SLHC=m
+CONFIG_PPP_BSDCOMP=m
+CONFIG_PPP_DEFLATE=m
+CONFIG_PPP_MPPE=m
+CONFIG_PPPOE=m
+CONFIG_PPP_ASYNC=m
+CONFIG_PPP_SYNC_TTY=m
+
+
 # ---------------------------------------------------------------------------
 # USB host and storage
 # ---------------------------------------------------------------------------
