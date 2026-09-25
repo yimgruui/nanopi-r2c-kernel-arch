@@ -68,6 +68,9 @@ CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
 CONFIG_WIREGUARD=y
 
+CONFIG_PERF_EVENTS=y          # dependency of CONFIG_BPF_EVENTS (prune may cut it)
+CONFIG_SECURITYFS=y           # dependency of CONFIG_BPF_LSM
+
 # ---------------------------------------------------------------------------
 # USB host and storage
 # ---------------------------------------------------------------------------
