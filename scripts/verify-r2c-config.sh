@@ -178,6 +178,11 @@ require_value y \
 require_value m \
     CONFIG_NETFILTER_XT_MATCH_BPF
 
+require_value 'y|m' \
+    CONFIG_PPP \
+    CONFIG_PPPOE
+
+
 if [ "$error_count" -gt 0 ]; then
     echo "Error: $error_count config check(s) failed" >&2
     exit 1
