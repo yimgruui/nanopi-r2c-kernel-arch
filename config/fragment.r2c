@@ -32,17 +32,29 @@ CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
 CONFIG_MOTORCOMM_PHY=y
 CONFIG_DEBUG_INFO=y
 CONFIG_DEBUG_INFO_BTF=y
+
+# ---------------------------------------------------------------------------
+# BPF core and LSM (corrected dependency chain)
+# ---------------------------------------------------------------------------
 CONFIG_BPF=y
 CONFIG_BPF_SYSCALL=y
 CONFIG_BPF_JIT=y
 CONFIG_BPF_JIT_DEFAULT_ON=y
 CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
-CONFIG_BPF_LSM=y
 CONFIG_CGROUP_BPF=y
-CONFIG_BPF_EVENTS=y
 
-CONFIG_KPROBE_EVENTS=y       # dependency of CONFIG_BPF_EVENTS
+# Upstream infrastructure required for BPF_EVENTS / BPF_LSM
+CONFIG_PERF_EVENTS=y          # dependency of BPF_EVENTS (prune may cut it)
+CONFIG_KPROBES=y              # upstream for KPROBE_EVENTS
+CONFIG_UPROBES=y              # upstream for UPROBE_EVENTS (default off on ARM64)
+CONFIG_SECURITY=y             # upstream for BPF_LSM
+
+# Event layer (now visible because upstream deps are enabled)
+CONFIG_KPROBE_EVENTS=y        # dependency of CONFIG_BPF_EVENTS
 CONFIG_UPROBE_EVENTS=y
+
+# BPF_EVENTS and BPF_LSM are internal auto-selected symbols – do NOT request them directly.
+# They will be set to y automatically once the deps above are satisfied.
 
 CONFIG_BPF_STREAM_PARSER=y
 CONFIG_LWTUNNEL=y
@@ -52,10 +64,15 @@ CONFIG_NETFILTER_BPF_LINK=y
 CONFIG_NETFILTER_XT_MATCH_BPF=m
 CONFIG_NET_CLS_BPF=m
 CONFIG_NET_ACT_BPF=m
+
+# Ensure BPF LSM is active in the LSM list
+CONFIG_LSM="landlock,lockdown,yama,integrity,apparmor,bpf"
+
 # Documented as disabled:
 CONFIG_BPF_JIT_ALWAYS_ON=n
 CONFIG_BPF_PRELOAD=n
 CONFIG_HID_BPF=n
+
 # Keep the internal RTL8153 LAN driver modular so its firmware is available from rootfs.
 CONFIG_USB_RTL8152=m
 CONFIG_USB_NET_DRIVERS=y
@@ -69,7 +86,6 @@ CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
 CONFIG_WIREGUARD=y
 
-CONFIG_PERF_EVENTS=y          # dependency of CONFIG_BPF_EVENTS (prune may cut it)
 CONFIG_SECURITYFS=y           # dependency of CONFIG_BPF_LSM
 
 # PPPoE (common ISP dial-up; userland needs pppd or rp-pppoe)
@@ -81,7 +97,6 @@ CONFIG_PPP_MPPE=m
 CONFIG_PPPOE=m
 CONFIG_PPP_ASYNC=m
 CONFIG_PPP_SYNC_TTY=m
-
 
 # ---------------------------------------------------------------------------
 # USB host and storage
