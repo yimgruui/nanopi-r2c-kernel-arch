@@ -1,15 +1,21 @@
 # NanoPi R2S (RK3328) router trim fragment on top of the R2S profile.
 # Invariant: keep the router contract; disable only board-irrelevant surface.
 #
-# Keep Ethernet+USB-NIC routing, nftables/iptables, WireGuard, IPv6,
+# Keep: Ethernet+USB-NIC routing, nftables/iptables, WireGuard, IPv6, PPPoE,
 # namespaces/cgroups/seccomp/BPF, Landlock, ext4/overlayfs, SD/MMC/eMMC,
-# USB storage/UAS, RK3328 thermal/cpufreq, PPPoE, and the USB host path.
+# USB storage/UAS, RK3328 thermal/cpufreq, and the USB host path.
 #
-# NOTE: Do NOT disable the following — they are required by fragment.r2c:
-#   PERF_EVENTS, KPROBES, PPP, PPPOE, MOTORCOMM_PHY,
-#   DEBUG_INFO_BTF, SECURITYFS, USB_USBNET, IPV6_SEG6_LWTUNNEL
-#   (SECURITY / FTRACE / TRACING / BPF_SYSCALL are also dependencies;
-#    never add them here.)
+# ---------------------------------------------------------------------------
+# NEVER disable these — required by fragment.r2c:
+#   FTRACE, TRACING, FUNCTION_TRACER, TRACEPOINTS,
+#   KPROBES, KPROBE_EVENTS, PERF_EVENTS,
+#   SECURITY, SECURITYFS, SECURITY_LANDLOCK,
+#   BPF, BPF_SYSCALL, BPF_JIT, BPF_LSM, BPF_EVENTS,
+#   DEBUG_INFO_BTF, MOTORCOMM_PHY, USB_RTL8152, USB_USBNET,
+#   PPP, PPPOE, IPV6_SEG6_LWTUNNEL, LSM
+# NEVER write =n for def_bool symbols:
+#   IPV6_SEG6_BPF, GLOB (select'd by filesystems)
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Non-Rockchip SoC platforms
@@ -32,13 +38,9 @@ CONFIG_ARCH_VEXPRESS=n
 CONFIG_ARCH_XGENE=n
 CONFIG_ARCH_SUNXI=n
 
-# RK3328 stays enabled; packaging installs only the NanoPi R2S DTB.
-
 # ---------------------------------------------------------------------------
 # Cortex-A53 architecture
 # ---------------------------------------------------------------------------
-# RK3328 has four ARMv8.0 Cortex-A53 cores. Keep their errata workarounds in
-# fragment.r2s; drop extensions and errata for newer or unrelated ARM cores.
 CONFIG_ARM64_HW_AFDBM=n
 CONFIG_ARM64_RAS_EXTN=n
 CONFIG_ARM64_CNP=n
@@ -93,7 +95,7 @@ CONFIG_SCHED_CLUSTER=n
 CONFIG_SCHED_CACHE=n
 
 # ---------------------------------------------------------------------------
-# ACPI
+# ACPI — device-tree-only SBC
 # ---------------------------------------------------------------------------
 CONFIG_ACPI=n
 
@@ -149,7 +151,6 @@ CONFIG_HAMRADIO=n
 # ---------------------------------------------------------------------------
 # Niche networking protocols
 # ---------------------------------------------------------------------------
-# Keep core IPv4/IPv6, netfilter, WireGuard, and PPPoE (ISP dial-up).
 CONFIG_ATM=n
 CONFIG_MPLS=n
 CONFIG_NET_9P=n
@@ -291,7 +292,7 @@ CONFIG_SCSI_UFS_QCOM=n
 CONFIG_SCSI_UFS_HISI=n
 
 # ---------------------------------------------------------------------------
-# RTC
+# RTC — keep only RK808 and HYM8563 (defined in fragment.r2c)
 # ---------------------------------------------------------------------------
 CONFIG_RTC_INTF_PROC=n
 CONFIG_RTC_INTF_DEV_UIE_EMUL=n
@@ -352,7 +353,7 @@ CONFIG_RTC_DRV_X1205=n
 CONFIG_RTC_DRV_XGENE=n
 
 # ---------------------------------------------------------------------------
-# Hardware monitoring
+# Hardware monitoring — keep only RK3328-relevant sensors
 # ---------------------------------------------------------------------------
 CONFIG_THERMAL_EMULATION=n
 CONFIG_THERMAL_GOV_FAIR_SHARE=n
@@ -648,6 +649,7 @@ CONFIG_STAGING=n
 CONFIG_INPUT_MISC=n
 CONFIG_KEXEC=n
 CONFIG_KEXEC_FILE=n
+CONFIG_CRASH_DUMP=n
 CONFIG_HIBERNATION=n
 CONFIG_SUSPEND=n
 CONFIG_PM_SLEEP=n
@@ -668,12 +670,15 @@ CONFIG_SYSFS_SYSCALL=n
 CONFIG_BLOCK_LEGACY_AUTOLOAD=n
 CONFIG_LEGACY_TIOCSTI=n
 CONFIG_LDISC_AUTOLOAD=n
-
 CONFIG_BOOT_CONFIG=n
 CONFIG_CACHESTAT_SYSCALL=n
 CONFIG_SECRETMEM=n
 CONFIG_UID16=n
+CONFIG_PROC_VMCORE=n
+CONFIG_PROC_VMCLEAK=n
+CONFIG_IKHEADERS=n
 
+# mkinitcpio emits zstd only
 CONFIG_RD_GZIP=n
 CONFIG_RD_BZIP2=n
 CONFIG_RD_LZMA=n
@@ -682,7 +687,7 @@ CONFIG_RD_LZO=n
 CONFIG_RD_LZ4=n
 
 # ---------------------------------------------------------------------------
-# USB networking adapters
+# USB networking adapters (keep RTL8152 via USB_RTL8152=m in r2c)
 # ---------------------------------------------------------------------------
 CONFIG_USB_NET_QMI_WWAN=n
 CONFIG_USB_NET_CDC_MBIM=n
@@ -726,7 +731,7 @@ CONFIG_USB_VL600=n
 CONFIG_NET_DSA=n
 
 # ---------------------------------------------------------------------------
-# MDIO PHY drivers
+# MDIO PHY drivers (keep MOTORCOMM_PHY and ROCKCHIP_PHY per r2c board needs)
 # ---------------------------------------------------------------------------
 CONFIG_MARVELL_PHY=n
 CONFIG_MARVELL_10G_PHY=n
@@ -795,7 +800,7 @@ CONFIG_UDF_FS=n
 CONFIG_UFS_FS=n
 
 # ---------------------------------------------------------------------------
-# NLS
+# NLS (keep 437/ASCII/ISO8859_1/UTF8 from r2c)
 # ---------------------------------------------------------------------------
 CONFIG_NLS_CODEPAGE_737=n
 CONFIG_NLS_CODEPAGE_775=n
@@ -886,6 +891,8 @@ CONFIG_QUOTACTL=n
 CONFIG_MSDOS_FS=n
 CONFIG_UNICODE=n
 CONFIG_FANOTIFY_ACCESS_PERMISSIONS=n
+CONFIG_AUTOFS_FS=n
+CONFIG_TMPFS_POSIX_ACL=n
 
 # ---------------------------------------------------------------------------
 # Block, device-mapper, and memory-backed storage
@@ -942,6 +949,9 @@ CONFIG_KSM=n
 CONFIG_HUGETLBFS=n
 CONFIG_HUGETLB_PAGE=n
 CONFIG_CGROUP_HUGETLB=n
+CONFIG_TRANSPARENT_HUGEPAGE=n
+CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS=n
+CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=n
 CONFIG_IOSCHED_BFQ=n
 CONFIG_BFQ_GROUP_IOSCHED=n
 CONFIG_MQ_IOSCHED_KYBER=n
@@ -1016,7 +1026,6 @@ CONFIG_MRP=n
 # ---------------------------------------------------------------------------
 # Networking, crypto, and virtual router features
 # ---------------------------------------------------------------------------
-
 CONFIG_RFS_ACCEL=n
 
 CONFIG_TCP_CONG_BIC=n
@@ -1101,8 +1110,7 @@ CONFIG_CRYPTO_LZ4HC=n
 CONFIG_CRYPTO_ZSTD=n
 CONFIG_XZ_DEC=n
 
-# IPv6: keep core IPv6, firewalling, forwarding, SEG6-LWT (and its
-# auto-enabled SEG6_BPF), and common tunnels.
+# IPv6: keep core + SEG6_LWTUNNEL (=y from r2c, SEG6_BPF auto-derives)
 CONFIG_IPV6_MIP6=n
 CONFIG_IPV6_ILA=n
 CONFIG_IPV6_MROUTE=n
@@ -1110,7 +1118,7 @@ CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=n
 CONFIG_IPV6_PIMSM_V2=n
 CONFIG_IPV6_OPTIMISTIC_DAD=n
 
-# Netfilter: keep nftables, iptables compat, NAT, conntrack, ipset, and NFQUEUE.
+# Netfilter
 CONFIG_NF_CONNTRACK_FTP=n
 CONFIG_NF_CONNTRACK_BROADCAST=n
 CONFIG_NF_CONNTRACK_NETBIOS_NS=n
@@ -1156,7 +1164,7 @@ CONFIG_NFT_FWD_NETDEV=n
 CONFIG_NF_DUP_NETDEV=n
 CONFIG_IP_NF_TARGET_ECN=n
 
-# Virtual networking: keep TUN, veth, macvlan, ipvlan, and IFB.
+# Virtual networking: keep TUN, veth, macvlan, ipvlan, IFB
 CONFIG_BONDING=n
 CONFIG_EQUALIZER=n
 CONFIG_NET_TEAM=n
@@ -1174,7 +1182,7 @@ CONFIG_NET_VRF=n
 CONFIG_FAILOVER=n
 CONFIG_NET_FAILOVER=n
 
-# Arch uses unified cgroup v2; keep its controllers and BPF device policy.
+# cgroup v2 (Arch uses unified hierarchy)
 CONFIG_CGROUP_FREEZER=n
 CONFIG_CGROUP_DEVICE=n
 CONFIG_CGROUP_CPUACCT=n
@@ -1182,7 +1190,7 @@ CONFIG_CGROUP_NET_PRIO=n
 CONFIG_CGROUP_NET_CLASSID=n
 CONFIG_NET_CLS_CGROUP=n
 
-# Storage/device cleanup: keep plain USB/SCSI disk and dm-crypt/LUKS.
+# Storage/device cleanup
 CONFIG_SCSI_PROC_FS=n
 CONFIG_CHR_DEV_SG=n
 CONFIG_BLK_DEV_BSG=n
@@ -1218,8 +1226,7 @@ CONFIG_UACCE=n
 CONFIG_DM_ZERO=n
 CONFIG_DM_INIT=n
 
-# Misc non-R2S peripherals; keep GPIO LEDs, RK thermal, fan/INA sensors,
-# RK808/HYM8563 RTC, Rockchip RNG, and the DW watchdog.
+# Misc non-R2S peripherals
 CONFIG_MFD_VIPERBOARD=n
 CONFIG_MFD_SM501=n
 CONFIG_MFD_WM8994=n
@@ -1439,8 +1446,6 @@ CONFIG_USB_CHAOSKEY=n
 # ---------------------------------------------------------------------------
 # Board buses and leaf drivers
 # ---------------------------------------------------------------------------
-
-# I2C: keep the RK3X controller for the PMIC and RTC.
 CONFIG_I2C_CHARDEV=n
 CONFIG_I2C_MUX=n
 CONFIG_I2C_ARB_GPIO_CHALLENGE=n
@@ -1464,7 +1469,6 @@ CONFIG_I2C_STUB=n
 CONFIG_I2C_SLAVE=n
 CONFIG_I2C_SLAVE_EEPROM=n
 
-# SPI: the R2S DTS leaves SPI disabled; SD/eMMC/USB cover the storage path.
 CONFIG_SPI=n
 CONFIG_SPI_MASTER=n
 CONFIG_SPI_MEM=n
@@ -1478,9 +1482,6 @@ CONFIG_SPI_DYNAMIC=n
 CONFIG_REGMAP_SPI=n
 CONFIG_MFD_RK8XX_SPI=n
 
-# USB: keep DWC2 host, RTL8152, USB_STORAGE, and UAS. Keep USB_USBNET because
-# USB_RTL8152 (R2S LAN) depends on it. Drop gadget, non-board host stacks,
-# and old vendor-specific storage subdrivers.
 CONFIG_USB_DEFAULT_PERSIST=n
 CONFIG_USB_MON=n
 CONFIG_USB_ANNOUNCE_NEW_DEVICES=n
@@ -1512,7 +1513,6 @@ CONFIG_USB_STORAGE_KARMA=n
 CONFIG_USB_STORAGE_CYPRESS_ATACB=n
 CONFIG_USB_STORAGE_ENE_UB6250=n
 
-# MMC/SD: keep the DW Rockchip host plus block support for SD and R2S Plus eMMC.
 CONFIG_PWRSEQ_EMMC=n
 CONFIG_PWRSEQ_SIMPLE=n
 CONFIG_SDIO_UART=n
@@ -1535,7 +1535,6 @@ CONFIG_MMC_USDHI6ROL0=n
 CONFIG_MMC_MTK=n
 CONFIG_MMC_SDHCI_XENON=n
 
-# PHYs: RK3328 R2S uses the INNO USB2 PHY and Rockchip eMMC PHY.
 CONFIG_PHY_NXP_PTN3222=n
 CONFIG_PHY_ROCKCHIP_DP=n
 CONFIG_PHY_ROCKCHIP_DPHY_RX0=n
@@ -1549,7 +1548,6 @@ CONFIG_PHY_ROCKCHIP_SNPS_PCIE3=n
 CONFIG_PHY_ROCKCHIP_TYPEC=n
 CONFIG_PHY_ROCKCHIP_USB=n
 
-# Board-irrelevant helper modules exposed by the ALARM baseline.
 CONFIG_ARM64_PLATFORM_DEVICES=n
 CONFIG_INPUT_SPARSEKMAP=n
 CONFIG_MFD_ROHM_BD718XX=n
@@ -1814,9 +1812,22 @@ CONFIG_CUSE=n
 CONFIG_TLS=n
 
 # ---------------------------------------------------------------------------
+# Tracing extras (BPF_EVENTS only needs FTRACE/TRACING/KPROBES — all in r2c)
+# ---------------------------------------------------------------------------
+CONFIG_FUNCTION_GRAPH_TRACER=n
+CONFIG_IRQSOFF_TRACER=n
+CONFIG_PREEMPT_TRACER=n
+CONFIG_SCHED_TRACER=n
+CONFIG_HWLAT_TRACER=n
+CONFIG_OSNOISE_TRACER=n
+CONFIG_TIMERLAT_TRACER=n
+CONFIG_MMIOTRACE=n
+CONFIG_FTRACE_MMIOTRACE=n
+
+# ---------------------------------------------------------------------------
 # Instrumentation and test code
-# NOTE: PERF_EVENTS, KPROBES, and DEBUG_INFO_BTF are NOT here because
-# fragment.r2c requires them (BPF_EVENTS, BPF_LSM, eBPF/BTF).
+# NOTE: PERF_EVENTS, KPROBES, DEBUG_INFO_BTF are NOT here — r2c requires them.
+# NOTE: ELF_CORE is NOT here — kept for Landscape / pppd userspace debugging.
 # ---------------------------------------------------------------------------
 CONFIG_PROFILING=n
 CONFIG_NET_PKTGEN=n
@@ -1841,3 +1852,4 @@ CONFIG_PROC_EVENTS=n
 CONFIG_DEVMEM=n
 CONFIG_DEVPORT=n
 CONFIG_PAGE_POOL_STATS=n
+CONFIG_XDP_SOCKETS=n
