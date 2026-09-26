@@ -293,7 +293,7 @@ jobs:
             release_flags+=(--prerelease)
             notes="Unofficial NanoPi R2C minimal kernel ${tag} validation build. This branch build does not deploy the pacman repository. Source package and merged config are included."
           else
-            notes="Unofficial NanoPi R2C minimal kernel ${tag}. Pacman repo: https://therealcoder1337.github.io/nanopi-r2c-kernel-arch/aarch64. Source package and merged config are included."
+            notes="Unofficial NanoPi R2C minimal kernel ${tag}. Pacman repo: https://yimgruui.github.io/nanopi-r2c-kernel-arch/aarch64. Source package and merged config are included."
           fi
 
           if gh release view --repo "$repo" "$tag" >/dev/null 2>&1; then
