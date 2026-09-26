@@ -1,5 +1,12 @@
-# NanoPi R2S (RK3328) router profile on top of ALARM linux-aarch64.
-# Invariant: this fragment keeps board/router features; trims live in fragment.prune.
+# NanoPi R2C/R2S (RK3328) router profile — overlay on ArchLinuxARM linux-aarch64
+# 用法: scripts/kconfig/merge_config.sh -m <ALARM config> fragment.r2c
+#       && make ARCH=arm64 olddefconfig
+#
+# 约定:
+#   1) 前置依赖与使用者写在同一文件（否则 olddefconfig 直接删符号）
+#   2) 注释独立成行，不写行内 #
+#   3) 不写 def_bool 派生符号（IPV6_SEG6_BPF）
+#   4) 不写会砍断依赖链的 =n（FTRACE / TRACING / SECURITY / BPF_SYSCALL）
 
 # ---------------------------------------------------------------------------
 # Kernel identity
@@ -7,54 +14,26 @@
 CONFIG_LOCALVERSION=""
 
 # ---------------------------------------------------------------------------
-# RK3328 CPU
+# RK3328 CPU (4x Cortex-A53)
+# 注: 843419/845719/819472 是 A53 errata；826319/827319/824069 在 arm64 Kconfig
+#     中通常不带 CPU 条件，写上无害。想精简就删，删之前先 grep 确认。
 # ---------------------------------------------------------------------------
 CONFIG_NR_CPUS=4
+CONFIG_ARM64_ERRATUM_819472=y
+CONFIG_ARM64_ERRATUM_824069=y
 CONFIG_ARM64_ERRATUM_826319=y
 CONFIG_ARM64_ERRATUM_827319=y
-CONFIG_ARM64_ERRATUM_824069=y
-CONFIG_ARM64_ERRATUM_819472=y
-CONFIG_ARM64_ERRATUM_845719=y
 CONFIG_ARM64_ERRATUM_843419=y
+CONFIG_ARM64_ERRATUM_845719=y
 
 # ---------------------------------------------------------------------------
 # Ethernet and router datapath
+# R2C 板载 WAN PHY 是 Motorcomm YT8521S，MOTORCOMM_PHY 必开
 # ---------------------------------------------------------------------------
 CONFIG_STMMAC_ETH=y
 CONFIG_STMMAC_PLATFORM=y
 CONFIG_DWMAC_ROCKCHIP=y
-# R2C note: the on-board WAN PHY is a Motorcomm YT8521S (the R2S uses a Realtek
-# RTL8211E), so CONFIG_MOTORCOMM_PHY is mandatory. CONFIG_DEBUG_INFO_BTF is
-# required by eBPF programs (e.g. Landscape); needs pahole at build time.
-# If the ALARM baseline selects DEBUG_INFO_NONE, also add:
-CONFIG_DEBUG_INFO_NONE=n
-CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
 CONFIG_MOTORCOMM_PHY=y
-CONFIG_DEBUG_INFO=y
-CONFIG_DEBUG_INFO_BTF=y
-CONFIG_BPF=y
-CONFIG_BPF_SYSCALL=y
-CONFIG_BPF_JIT=y
-CONFIG_BPF_JIT_DEFAULT_ON=y
-CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
-CONFIG_BPF_LSM=y
-CONFIG_CGROUP_BPF=y
-CONFIG_BPF_EVENTS=y
-CONFIG_BPF_STREAM_PARSER=y
-CONFIG_LWTUNNEL=y
-CONFIG_LWTUNNEL_BPF=y
-CONFIG_IPV6_SEG6_LWTUNNEL=y   # SEG6_BPF is def_bool y, auto-enabled with this
-CONFIG_NETFILTER_BPF_LINK=y
-CONFIG_NETFILTER_XT_MATCH_BPF=m
-CONFIG_NET_CLS_BPF=m
-CONFIG_NET_ACT_BPF=m
-# Documented as disabled:
-CONFIG_BPF_JIT_ALWAYS_ON=n
-CONFIG_BPF_PRELOAD=n
-CONFIG_HID_BPF=n
-# Keep the internal RTL8153 LAN driver modular so its firmware is available from rootfs.
-CONFIG_USB_RTL8152=m
-CONFIG_USB_NET_DRIVERS=y
 CONFIG_NF_CONNTRACK=y
 CONFIG_NF_NAT=y
 CONFIG_NF_TABLES=y
@@ -64,11 +43,74 @@ CONFIG_NFT_NAT=y
 CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
 CONFIG_WIREGUARD=y
+CONFIG_USB_RTL8152=m
+CONFIG_USB_NET_DRIVERS=y
 
-CONFIG_PERF_EVENTS=y          # dependency of CONFIG_BPF_EVENTS (prune may cut it)
-CONFIG_SECURITYFS=y           # dependency of CONFIG_BPF_LSM
+# ---------------------------------------------------------------------------
+# BPF — 先写依赖，再写功能
+# ---------------------------------------------------------------------------
 
-# PPPoE (common ISP dial-up; userland needs pppd or rp-pppoe)
+# --- 基础 ---
+CONFIG_BPF=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+CONFIG_BPF_JIT_DEFAULT_ON=y
+CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
+
+# --- tracing 栈（BPF_EVENTS 的硬依赖，缺一整个符号组会消失）---
+CONFIG_FTRACE=y
+CONFIG_TRACING=y
+CONFIG_FUNCTION_TRACER=y
+CONFIG_TRACEPOINTS=y
+CONFIG_KPROBES=y
+CONFIG_KPROBE_EVENTS=y
+CONFIG_PERF_EVENTS=y
+
+# --- 安全（BPF_LSM 的硬依赖，SECURITYFS 不是替代品）---
+CONFIG_SECURITY=y
+CONFIG_SECURITYFS=y
+CONFIG_SECURITY_LANDLOCK=y
+
+# --- 功能 ---
+CONFIG_BPF_EVENTS=y
+CONFIG_BPF_LSM=y
+CONFIG_CGROUP_BPF=y
+CONFIG_BPF_STREAM_PARSER=y
+CONFIG_LWTUNNEL=y
+CONFIG_LWTUNNEL_BPF=y
+CONFIG_NETFILTER_BPF_LINK=y
+CONFIG_NETFILTER_XT_MATCH_BPF=m
+CONFIG_NET_CLS_BPF=m
+CONFIG_NET_ACT_BPF=m
+
+# --- LSM 注册顺序：在基线原值末尾追加 ,bpf，别整串照抄 ---
+#     先跑: grep '^CONFIG_LSM=' <ALARM config>
+CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf"
+
+# --- 明确关闭 ---
+CONFIG_BPF_JIT_ALWAYS_ON=n
+CONFIG_BPF_PRELOAD=n
+CONFIG_HID_BPF=n
+
+# ---------------------------------------------------------------------------
+# Debug info + BTF（eBPF 程序需要；编译期依赖 pahole/dwarves）
+# ---------------------------------------------------------------------------
+CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
+CONFIG_DEBUG_INFO_BTF=y
+# 若 7.2.7 已移除 config DEBUG_INFO（改成纯 choice），删掉下面这行
+CONFIG_DEBUG_INFO=y
+
+# ---------------------------------------------------------------------------
+# SRv6 / LWT
+# SEG6_BPF 是 def_bool y，由 SEG6_LWTUNNEL 自动打开，不要在 prune 里写 =n
+# ---------------------------------------------------------------------------
+CONFIG_IPV6_SEG6_LWTUNNEL=y
+
+# ---------------------------------------------------------------------------
+# PPPoE（用户态需要 pppd 或 rp-pppoe）
+# SLHC 由 PPP select 自动带出，=m 与 PPP=m 一致
+# MPPE 依赖 CRYPTO，ALARM 基线自带
+# ---------------------------------------------------------------------------
 CONFIG_PPP=m
 CONFIG_SLHC=m
 CONFIG_PPP_BSDCOMP=m
@@ -77,7 +119,6 @@ CONFIG_PPP_MPPE=m
 CONFIG_PPPOE=m
 CONFIG_PPP_ASYNC=m
 CONFIG_PPP_SYNC_TTY=m
-
 
 # ---------------------------------------------------------------------------
 # USB host and storage
@@ -90,13 +131,12 @@ CONFIG_USB_STORAGE=y
 CONFIG_USB_UAS=y
 
 # ---------------------------------------------------------------------------
-# MMC, block storage, and optional compressed swap
+# MMC, block, zram
 # ---------------------------------------------------------------------------
 CONFIG_MMC=y
 CONFIG_MMC_BLOCK=y
 CONFIG_MMC_DW=y
 CONFIG_MMC_DW_ROCKCHIP=y
-# Ship zram as an opt-in module; userspace remains responsible for configuring it.
 CONFIG_SWAP=y
 CONFIG_ZRAM=m
 CONFIG_ZSMALLOC=m
@@ -106,7 +146,7 @@ CONFIG_LZO_COMPRESS=m
 CONFIG_LZO_DECOMPRESS=m
 
 # ---------------------------------------------------------------------------
-# Thermal, hwmon, and RTC
+# Thermal, hwmon, RTC
 # ---------------------------------------------------------------------------
 CONFIG_HWMON=y
 CONFIG_THERMAL=y
@@ -122,13 +162,9 @@ CONFIG_RTC_DRV_RK808=m
 CONFIG_RTC_DRV_HYM8563=m
 
 # ---------------------------------------------------------------------------
-# Debug UART
+# Debug UART / GPIO / LED / button / cpufreq
 # ---------------------------------------------------------------------------
 CONFIG_SERIAL_8250_NR_UARTS=4
-
-# ---------------------------------------------------------------------------
-# LEDs, reset button, and CPU power management
-# ---------------------------------------------------------------------------
 CONFIG_GPIOLIB=y
 CONFIG_GPIO_CDEV=y
 CONFIG_GPIO_ROCKCHIP=y
@@ -149,17 +185,16 @@ CONFIG_CPU_THERMAL=y
 CONFIG_CPU_FREQ_THERMAL=y
 
 # ---------------------------------------------------------------------------
-# Locales and userspace compatibility
+# Locales
 # ---------------------------------------------------------------------------
 CONFIG_NLS=y
 CONFIG_NLS_CODEPAGE_437=y
 CONFIG_NLS_ASCII=y
 CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
-CONFIG_SECURITY_LANDLOCK=y
 
-# Keep these disabled: ALARM 7.2.3-3+ enables these parents, which forces
-# pruned DMA-BUF / SCSI-transport / glob helpers back on (upstream fix).
+# ---------------------------------------------------------------------------
+# Trim: 仍需禁用的父级项（FTRACE 已移出，见文件头约定 4）
+# ---------------------------------------------------------------------------
 CONFIG_INFINIBAND=n
 CONFIG_DMABUF_HEAPS=n
-CONFIG_FTRACE=n
