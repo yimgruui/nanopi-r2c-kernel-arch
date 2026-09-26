@@ -158,3 +158,9 @@ CONFIG_NLS_ASCII=y
 CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
 CONFIG_SECURITY_LANDLOCK=y
+
+# Keep these disabled: ALARM 7.2.3-3+ enables these parents, which forces
+# pruned DMA-BUF / SCSI-transport / glob helpers back on (upstream fix).
+CONFIG_INFINIBAND=n
+CONFIG_DMABUF_HEAPS=n
+CONFIG_FTRACE=n
