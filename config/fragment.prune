@@ -3,7 +3,13 @@
 #
 # Keep Ethernet+USB-NIC routing, nftables/iptables, WireGuard, IPv6,
 # namespaces/cgroups/seccomp/BPF, Landlock, ext4/overlayfs, SD/MMC/eMMC,
-# USB storage/UAS, RK3328 thermal/cpufreq, and the USB host path.
+# USB storage/UAS, RK3328 thermal/cpufreq, PPPoE, and the USB host path.
+#
+# NOTE: Do NOT disable the following — they are required by fragment.r2c:
+#   PERF_EVENTS, KPROBES, PPP, PPPOE, MOTORCOMM_PHY,
+#   DEBUG_INFO_BTF, SECURITYFS, USB_USBNET, IPV6_SEG6_LWTUNNEL
+#   (SECURITY / FTRACE / TRACING / BPF_SYSCALL are also dependencies;
+#    never add them here.)
 
 # ---------------------------------------------------------------------------
 # Non-Rockchip SoC platforms
@@ -51,8 +57,6 @@ CONFIG_ARM64_GCS=n
 CONFIG_ARM64_LSUI=n
 CONFIG_ARM64_SVE=n
 CONFIG_ARM64_SME=n
-# Keep modern AArch32 compatibility without emulating obsolete ARMv8
-# instructions used by very old 32-bit software.
 CONFIG_ARMV8_DEPRECATED=n
 CONFIG_ARM64_ERRATUM_832075=n
 CONFIG_ARM64_ERRATUM_1742098=n
@@ -81,27 +85,21 @@ CONFIG_ARM64_ERRATUM_4311569=n
 CONFIG_ARM64_ERRATUM_4193714=n
 CONFIG_ARM64_ERRATUM_4118414=n
 CONFIG_ARM64_ERRATUM_858921=n
-# Keep the higher-rated menu idle governor used by default; TEO is an unused
-# runtime alternative on this profile. Frequency transition accounting is
-# observability-only and does not control schedutil.
 CONFIG_CPU_IDLE_GOV_LADDER=n
 CONFIG_CPU_IDLE_GOV_TEO=n
 CONFIG_CPU_FREQ_STAT=n
 CONFIG_SCHED_SMT=n
 CONFIG_SCHED_CLUSTER=n
-# RK3328 has one shared L2 cache, so multi-LLC task aggregation cannot activate.
 CONFIG_SCHED_CACHE=n
 
 # ---------------------------------------------------------------------------
 # ACPI
 # ---------------------------------------------------------------------------
-# Device-tree-only SBC; keep ARM64 stubs that olddefconfig leaves.
 CONFIG_ACPI=n
 
 # ---------------------------------------------------------------------------
 # Virtualization and cloud infrastructure
 # ---------------------------------------------------------------------------
-# Drop built-in virtio users before the umbrella symbols.
 CONFIG_KVM=n
 CONFIG_KVM_ARM_HOST=n
 CONFIG_VIRTUALIZATION=n
@@ -140,7 +138,6 @@ CONFIG_PAGE_REPORTING=n
 # ---------------------------------------------------------------------------
 # Wireless, Bluetooth, NFC, and radio
 # ---------------------------------------------------------------------------
-# NanoPi R2S is used as a wired router.
 CONFIG_BT=n
 CONFIG_CFG80211=n
 CONFIG_MAC80211=n
@@ -152,8 +149,7 @@ CONFIG_HAMRADIO=n
 # ---------------------------------------------------------------------------
 # Niche networking protocols
 # ---------------------------------------------------------------------------
-# Keep core IPv4/IPv6, netfilter, and WireGuard. PPPoE/direct-DSL-modem
-# support is outside this profile.
+# Keep core IPv4/IPv6, netfilter, WireGuard, and PPPoE (ISP dial-up).
 CONFIG_ATM=n
 CONFIG_MPLS=n
 CONFIG_NET_9P=n
@@ -167,18 +163,14 @@ CONFIG_6LOWPAN=n
 CONFIG_L2TP=n
 CONFIG_PPTP=n
 CONFIG_SLIP=n
-CONFIG_PPP=n
-CONFIG_PPPOE=n
 CONFIG_MPTCP=n
 CONFIG_DCB=n
 CONFIG_NET_SWITCHDEV=n
-# Ordinary GRE tunnels remain supported; broadcast GRE WAN emulation does not.
 CONFIG_NET_IPGRE_BROADCAST=n
 
 # ---------------------------------------------------------------------------
 # Enterprise and non-board NIC vendors
 # ---------------------------------------------------------------------------
-# Keep Realtek for RTL8153 and STMicro/Synopsys for dwmac/stmmac.
 CONFIG_SCSI_BNX2_ISCSI=n
 CONFIG_SCSI_BNX2X_FCOE=n
 CONFIG_NET_VENDOR_AGERE=n
@@ -246,7 +238,6 @@ CONFIG_NET_VENDOR_SYNOPSYS=n
 # ---------------------------------------------------------------------------
 # Network and clustered filesystems
 # ---------------------------------------------------------------------------
-# Keep ext4, FAT/VFAT, exFAT, overlayfs, and FUSE.
 CONFIG_BTRFS_FS=n
 CONFIG_XFS_FS=n
 CONFIG_F2FS_FS=n
@@ -269,10 +260,6 @@ CONFIG_DNS_RESOLVER=n
 # ---------------------------------------------------------------------------
 # Storage, SCSI, and ATA
 # ---------------------------------------------------------------------------
-# Keep MMC/eMMC plus USB storage/UAS from the R2S profile.
-# Removed: enterprise RAID, SAS/FC/iSCSI, SATA/PATA, tape/UFS, storage archaeology.
-# SCSI_LOWLEVEL=n drops all HBA leaf drivers. USB HDDs/SSDs use USB_STORAGE/UAS
-# plus SCSI disk, not libata/AHCI.
 CONFIG_SCSI_LOWLEVEL=n
 CONFIG_ATA=n
 CONFIG_ATA_SFF=n
@@ -289,7 +276,6 @@ CONFIG_SCSI_SAS_ATTRS=n
 CONFIG_SCSI_SRP_ATTRS=n
 CONFIG_ISCSI_TARGET=n
 CONFIG_ATA_OVER_ETH=n
-# Native SATA controllers not present on NanoPi R2S/RK3328
 CONFIG_SATA_HOST=n
 CONFIG_SATA_PMP=n
 CONFIG_SATA_AHCI=n
@@ -298,7 +284,6 @@ CONFIG_SATA_AHCI_SEATTLE=n
 CONFIG_SATA_INIC162X=n
 CONFIG_SATA_ACARD_AHCI=n
 CONFIG_SATA_SIL24=n
-# UFS (mobile-SoC storage; RK3328 boots SD/eMMC/USB)
 CONFIG_SCSI_UFSHCD=n
 CONFIG_SCSI_UFSHCD_PCI=n
 CONFIG_SCSI_UFSHCD_PLATFORM=n
@@ -308,8 +293,6 @@ CONFIG_SCSI_UFS_HISI=n
 # ---------------------------------------------------------------------------
 # RTC
 # ---------------------------------------------------------------------------
-# Keep only the RK808 PMIC RTC and optional HYM8563 from the R2S profile.
-# Removes the Dallas/Maxim/legacy/industrial RTC driver zoo.
 CONFIG_RTC_INTF_PROC=n
 CONFIG_RTC_INTF_DEV_UIE_EMUL=n
 CONFIG_RTC_NVMEM=n
@@ -371,7 +354,6 @@ CONFIG_RTC_DRV_XGENE=n
 # ---------------------------------------------------------------------------
 # Hardware monitoring
 # ---------------------------------------------------------------------------
-# Keep only RK3328-relevant fan and INA sensors from the R2S profile.
 CONFIG_THERMAL_EMULATION=n
 CONFIG_THERMAL_GOV_FAIR_SHARE=n
 CONFIG_THERMAL_GOV_USER_SPACE=n
@@ -563,7 +545,6 @@ CONFIG_IOMMU_SUPPORT=n
 # ---------------------------------------------------------------------------
 # HID, input, and remote control
 # ---------------------------------------------------------------------------
-# No local console peripherals are expected.
 CONFIG_VT=n
 CONFIG_HID_SUPPORT=n
 CONFIG_HID=n
@@ -579,7 +560,6 @@ CONFIG_RC_CORE=n
 # ---------------------------------------------------------------------------
 # USB gadget and device mode
 # ---------------------------------------------------------------------------
-# R2S is used as a USB host.
 CONFIG_USB_CONFIGFS_SERIAL=n
 CONFIG_USB_CONFIGFS_ACM=n
 CONFIG_USB_CONFIGFS_OBEX=n
@@ -616,7 +596,6 @@ CONFIG_USB_SERIAL=n
 # ---------------------------------------------------------------------------
 # USB host controller PCI variants
 # ---------------------------------------------------------------------------
-# Keep platform host support for USB2 and the internal USB3 RTL8153 path.
 CONFIG_USB_XHCI_PCI=n
 CONFIG_USB_XHCI_PCI_RENESAS=n
 CONFIG_USB_EHCI_PCI=n
@@ -629,7 +608,6 @@ CONFIG_NOP_USB_XCEIV=n
 # ---------------------------------------------------------------------------
 # PCIe endpoint role
 # ---------------------------------------------------------------------------
-# R2S is not used as a PCIe endpoint.
 CONFIG_PCI=n
 CONFIG_PCIEPORTBUS=n
 CONFIG_PCIE_ROCKCHIP_HOST=n
@@ -639,7 +617,6 @@ CONFIG_PCIE_ROCKCHIP_DW_EP=n
 # ---------------------------------------------------------------------------
 # Firmware and foreign-SoC infrastructure
 # ---------------------------------------------------------------------------
-# R2S boots through U-Boot and device tree; no EFI, DMI, server, or modem buses.
 CONFIG_EFI=n
 CONFIG_DMI=n
 CONFIG_MHI_BUS=n
@@ -652,7 +629,6 @@ CONFIG_TYPEC=n
 CONFIG_USBIP_CORE=n
 CONFIG_ARM_SMCCC_SOC_ID=n
 CONFIG_SOC_BUS=n
-CONFIG_GLOB=n
 
 # ---------------------------------------------------------------------------
 # Accessibility
@@ -693,15 +669,11 @@ CONFIG_BLOCK_LEGACY_AUTOLOAD=n
 CONFIG_LEGACY_TIOCSTI=n
 CONFIG_LDISC_AUTOLOAD=n
 
-# Drop unused bootconfig, standalone query/allocation interfaces, and legacy
-# 16-bit UID syscall wrappers.
 CONFIG_BOOT_CONFIG=n
 CONFIG_CACHESTAT_SYSCALL=n
 CONFIG_SECRETMEM=n
 CONFIG_UID16=n
 
-# The packaged mkinitcpio profile always emits zstd; keep only that initramfs
-# decompressor in the kernel.
 CONFIG_RD_GZIP=n
 CONFIG_RD_BZIP2=n
 CONFIG_RD_LZMA=n
@@ -756,7 +728,6 @@ CONFIG_NET_DSA=n
 # ---------------------------------------------------------------------------
 # MDIO PHY drivers
 # ---------------------------------------------------------------------------
-# Keep the Realtek PHY used by the onboard Ethernet path.
 CONFIG_MARVELL_PHY=n
 CONFIG_MARVELL_10G_PHY=n
 CONFIG_MICREL_PHY=n
@@ -784,7 +755,6 @@ CONFIG_NET_VENDOR_HISILICON=n
 # ---------------------------------------------------------------------------
 # Legacy protocol helpers
 # ---------------------------------------------------------------------------
-# Keep iptables compatibility; disable obsolete conntrack/NAT helpers.
 CONFIG_ATALK=n
 CONFIG_NF_CONNTRACK_AMANDA=n
 CONFIG_NF_CONNTRACK_H323=n
@@ -827,7 +797,6 @@ CONFIG_UFS_FS=n
 # ---------------------------------------------------------------------------
 # NLS
 # ---------------------------------------------------------------------------
-# Keep UTF-8 plus FAT/VFAT default codepage/iocharset support.
 CONFIG_NLS_CODEPAGE_737=n
 CONFIG_NLS_CODEPAGE_775=n
 CONFIG_NLS_CODEPAGE_850=n
@@ -878,7 +847,6 @@ CONFIG_NLS_UCS2_UTILS=n
 # ---------------------------------------------------------------------------
 # PPS and GNSS
 # ---------------------------------------------------------------------------
-# Disable PTP first because it selects PPS.
 CONFIG_PTP_1588_CLOCK_KVM=n
 CONFIG_PTP_1588_CLOCK_VMCLOCK=n
 CONFIG_PTP_1588_CLOCK=n
@@ -895,7 +863,6 @@ CONFIG_GNSS=n
 # ---------------------------------------------------------------------------
 # Scheduler debug
 # ---------------------------------------------------------------------------
-# Keep PREEMPT and PREEMPT_DYNAMIC.
 CONFIG_SCHEDSTATS=n
 
 # ---------------------------------------------------------------------------
@@ -917,9 +884,7 @@ CONFIG_QUOTA_NETLINK_INTERFACE=n
 CONFIG_QUOTA_TREE=n
 CONFIG_QUOTACTL=n
 CONFIG_MSDOS_FS=n
-# UTF-8 casefold tables are only needed by filesystems created with casefold.
 CONFIG_UNICODE=n
-# Keep fanotify events without antivirus-style permission decisions.
 CONFIG_FANOTIFY_ACCESS_PERMISSIONS=n
 
 # ---------------------------------------------------------------------------
@@ -962,8 +927,6 @@ CONFIG_DM_LOG_WRITES=n
 CONFIG_DM_ZONED=n
 CONFIG_DM_INTEGRITY=n
 CONFIG_BLK_DEV_INTEGRITY=n
-# Keep the modular zram implementation minimal: one fast compressor and no
-# writeback, recompression, or debug accounting.
 CONFIG_ZRAM_BACKEND_LZ4=n
 CONFIG_ZRAM_BACKEND_LZ4HC=n
 CONFIG_ZRAM_BACKEND_ZSTD=n
@@ -988,8 +951,6 @@ CONFIG_BLK_SED_OPAL=n
 # ---------------------------------------------------------------------------
 # Network protocols and tunnels
 # ---------------------------------------------------------------------------
-# Keep IPv4/IPv6, nftables, iptables compat, WireGuard, TUN,
-# GRE/IPIP/SIT/VTI/XFRM, and SQM essentials.
 CONFIG_IP_SCTP=n
 CONFIG_INET_SCTP_DIAG=n
 CONFIG_NETFILTER_XT_MATCH_SCTP=n
@@ -1004,8 +965,6 @@ CONFIG_GENEVE=n
 CONFIG_NET_FOU=n
 CONFIG_NET_FOU_IP_TUNNELS=n
 
-# Keep modern XFRM netlink; drop deprecated PF_KEY, LSM-labelled IPsec hooks,
-# and MIPv6/developer extras. Landlock and Yama do not use the XFRM LSM hooks.
 CONFIG_NET_KEY=n
 CONFIG_NET_KEY_MIGRATE=n
 CONFIG_SECURITY_NETWORK_XFRM=n
@@ -1013,7 +972,6 @@ CONFIG_XFRM_SUB_POLICY=n
 CONFIG_XFRM_MIGRATE=n
 CONFIG_XFRM_STATISTICS=n
 
-# Drop legacy bridge/ARP firewalling while keeping normal bridge and L3 firewall.
 CONFIG_BRIDGE_NETFILTER=n
 CONFIG_NF_TABLES_BRIDGE=n
 CONFIG_NFT_BRIDGE_META=n
@@ -1059,10 +1017,8 @@ CONFIG_MRP=n
 # Networking, crypto, and virtual router features
 # ---------------------------------------------------------------------------
 
-# Neither R2S Ethernet driver supports hardware-accelerated RFS.
 CONFIG_RFS_ACCEL=n
 
-# TCP congestion: keep default CUBIC and optional BBR.
 CONFIG_TCP_CONG_BIC=n
 CONFIG_TCP_CONG_WESTWOOD=n
 CONFIG_TCP_CONG_HTCP=n
@@ -1078,10 +1034,6 @@ CONFIG_TCP_CONG_ILLINOIS=n
 CONFIG_TCP_CONG_DCTCP=n
 CONFIG_TCP_CONG_CDG=n
 
-# Crypto: keep WireGuard, AES/XTS/CBC/CTR/ESSIV, SHA/HMAC/GCM/CCM,
-# ARM64 acceleration, Rockchip crypto, DRBG, and jitter entropy.
-# Keep basic keyrings for fscrypt and dm-crypt. Drop optional encrypted payloads
-# and the unused in-kernel X.509/PKCS#7 verification chain.
 CONFIG_PERSISTENT_KEYRINGS=n
 CONFIG_ENCRYPTED_KEYS=n
 CONFIG_SYSTEM_TRUSTED_KEYRING=n
@@ -1149,20 +1101,16 @@ CONFIG_CRYPTO_LZ4HC=n
 CONFIG_CRYPTO_ZSTD=n
 CONFIG_XZ_DEC=n
 
-# IPv6: keep core IPv6, firewalling, forwarding, and common tunnels.
+# IPv6: keep core IPv6, firewalling, forwarding, SEG6-LWT (and its
+# auto-enabled SEG6_BPF), and common tunnels.
 CONFIG_IPV6_MIP6=n
 CONFIG_IPV6_ILA=n
 CONFIG_IPV6_MROUTE=n
 CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=n
 CONFIG_IPV6_PIMSM_V2=n
-CONFIG_IPV6_SEG6_LWTUNNEL=n
-CONFIG_IPV6_SEG6_HMAC=n
-CONFIG_IPV6_SEG6_BPF=n
-# Keep normal duplicate-address detection without optimistic address use.
 CONFIG_IPV6_OPTIMISTIC_DAD=n
 
 # Netfilter: keep nftables, iptables compat, NAT, conntrack, ipset, and NFQUEUE.
-# Drop obsolete helpers and niche legacy classifiers/text scanners.
 CONFIG_NF_CONNTRACK_FTP=n
 CONFIG_NF_CONNTRACK_BROADCAST=n
 CONFIG_NF_CONNTRACK_NETBIOS_NS=n
@@ -1270,9 +1218,6 @@ CONFIG_UACCE=n
 CONFIG_DM_ZERO=n
 CONFIG_DM_INIT=n
 
-# No enabled security subsystem consumes securityfs.
-CONFIG_SECURITYFS=n
-
 # Misc non-R2S peripherals; keep GPIO LEDs, RK thermal, fan/INA sensors,
 # RK808/HYM8563 RTC, Rockchip RNG, and the DW watchdog.
 CONFIG_MFD_VIPERBOARD=n
@@ -1349,8 +1294,6 @@ CONFIG_SERIO_ARC_PS2=n
 CONFIG_N_HDLC=n
 CONFIG_N_GSM=n
 CONFIG_SERIAL_ARC=n
-# RK3328 has no supported hardware RNG; the Rockchip driver only matches newer
-# SoCs. This does not remove the kernel random number generator or /dev/urandom.
 CONFIG_HW_RANDOM=n
 CONFIG_HW_RANDOM_ARM_SMCCC_TRNG=n
 CONFIG_HW_RANDOM_TIMERIOMEM=n
@@ -1460,9 +1403,6 @@ CONFIG_NET_EMATCH=n
 CONFIG_CLS_U32_PERF=n
 CONFIG_GACT_PROB=n
 CONFIG_NET_ACT_SAMPLE=n
-CONFIG_NET_ACT_NAT=n
-# tc conntrack pipelines are not used by SQM or either R2S Ethernet driver.
-CONFIG_NET_ACT_CT=n
 CONFIG_NET_ACT_PEDIT=n
 CONFIG_NET_ACT_SIMP=n
 CONFIG_NET_ACT_SKBMOD=n
@@ -1500,8 +1440,7 @@ CONFIG_USB_CHAOSKEY=n
 # Board buses and leaf drivers
 # ---------------------------------------------------------------------------
 
-# I2C: keep the RK3X controller for the PMIC and RTC; drop userspace, mux,
-# bitbang, USB, slave-test, and foreign-controller leaves.
+# I2C: keep the RK3X controller for the PMIC and RTC.
 CONFIG_I2C_CHARDEV=n
 CONFIG_I2C_MUX=n
 CONFIG_I2C_ARB_GPIO_CHALLENGE=n
@@ -1539,13 +1478,12 @@ CONFIG_SPI_DYNAMIC=n
 CONFIG_REGMAP_SPI=n
 CONFIG_MFD_RK8XX_SPI=n
 
-# USB: keep DWC2/DWC3, EHCI/OHCI/XHCI platform controllers, RTL8152,
-# USB_STORAGE, and UAS. Drop non-board host stacks, usbnet core, and old
-# vendor-specific storage subdrivers not needed for normal USB HDD/SSD/UAS.
+# USB: keep DWC2 host, RTL8152, USB_STORAGE, and UAS. Keep USB_USBNET because
+# USB_RTL8152 (R2S LAN) depends on it. Drop gadget, non-board host stacks,
+# and old vendor-specific storage subdrivers.
 CONFIG_USB_DEFAULT_PERSIST=n
 CONFIG_USB_MON=n
 CONFIG_USB_ANNOUNCE_NEW_DEVICES=n
-CONFIG_USB_USBNET=n
 CONFIG_USB_MAX3421_HCD=n
 CONFIG_USB_MUSB_HDRC=n
 CONFIG_USB_MUSB_HOST=n
@@ -1575,7 +1513,6 @@ CONFIG_USB_STORAGE_CYPRESS_ATACB=n
 CONFIG_USB_STORAGE_ENE_UB6250=n
 
 # MMC/SD: keep the DW Rockchip host plus block support for SD and R2S Plus eMMC.
-# Neither shipped device tree uses an MMC power-sequence helper.
 CONFIG_PWRSEQ_EMMC=n
 CONFIG_PWRSEQ_SIMPLE=n
 CONFIG_SDIO_UART=n
@@ -1598,8 +1535,7 @@ CONFIG_MMC_USDHI6ROL0=n
 CONFIG_MMC_MTK=n
 CONFIG_MMC_SDHCI_XENON=n
 
-# PHYs: RK3328 R2S uses the INNO USB2 PHY and Rockchip eMMC PHY; no DP/HDMI,
-# MIPI, Type-C, PCIe, or newer Rockchip combo PHY nodes are enabled by its DTS.
+# PHYs: RK3328 R2S uses the INNO USB2 PHY and Rockchip eMMC PHY.
 CONFIG_PHY_NXP_PTN3222=n
 CONFIG_PHY_ROCKCHIP_DP=n
 CONFIG_PHY_ROCKCHIP_DPHY_RX0=n
@@ -1641,9 +1577,6 @@ CONFIG_SRAM=n
 # ---------------------------------------------------------------------------
 # SoC, regulator, clock, and firmware leaves
 # ---------------------------------------------------------------------------
-# Keep fixed/GPIO/RK808 regulators, RK805 pinctrl, Rockchip GPIO, syscon reboot,
-# PSCI, RK efuse/nvmem, and the DesignWare 8250 serial path.
-# GPIO LEDs/reset and modern CDEV remain; remove deprecated userspace ABIs.
 CONFIG_GPIO_SYSFS=n
 CONFIG_GPIO_SYSFS_LEGACY=n
 CONFIG_GPIO_CDEV_V1=n
@@ -1665,7 +1598,6 @@ CONFIG_GPIO_PCA953X=n
 CONFIG_GPIO_PCA953X_IRQ=n
 CONFIG_GPIO_MAX77620=n
 CONFIG_GPIO_PALMAS=n
-# PSCI handles reset and poweroff; the R2S DT only uses syscon for reboot mode.
 CONFIG_POWER_RESET_SYSCON=n
 CONFIG_POWER_RESET_SYSCON_POWEROFF=n
 CONFIG_POWER_RESET_AS3722=n
@@ -1830,7 +1762,6 @@ CONFIG_LEDS_TRIGGER_TRANSIENT=n
 CONFIG_LEDS_TRIGGER_CAMERA=n
 CONFIG_LEDS_TRIGGER_PANIC=n
 CONFIG_LED_TRIGGER_PHY=n
-CONFIG_MOTORCOMM_PHY=n
 CONFIG_ROCKCHIP_PHY=n
 CONFIG_REALTEK_PHY_HWMON=n
 CONFIG_NETWORK_PHY_TIMESTAMPING=n
@@ -1877,19 +1808,17 @@ CONFIG_HISILICON_ERRATUM_161010101=n
 # ---------------------------------------------------------------------------
 # Small module leaves not needed for this router profile
 # ---------------------------------------------------------------------------
-# Keep normal FUSE; drop optional passthrough/io_uring paths and userspace CUSE.
 CONFIG_FUSE_PASSTHROUGH=n
 CONFIG_FUSE_IO_URING=n
 CONFIG_CUSE=n
-# Kernel TLS offload is not needed for normal userspace TLS, routing, or WireGuard.
 CONFIG_TLS=n
 
 # ---------------------------------------------------------------------------
 # Instrumentation and test code
+# NOTE: PERF_EVENTS, KPROBES, and DEBUG_INFO_BTF are NOT here because
+# fragment.r2c requires them (BPF_EVENTS, BPF_LSM, eBPF/BTF).
 # ---------------------------------------------------------------------------
 CONFIG_PROFILING=n
-CONFIG_PERF_EVENTS=n
-CONFIG_KPROBES=n
 CONFIG_NET_PKTGEN=n
 CONFIG_PCI_ENDPOINT_TEST=n
 CONFIG_DM_DEBUG=n
@@ -1903,7 +1832,6 @@ CONFIG_DEBUG_VM_PGTABLE=n
 CONFIG_DEBUG_LIST=n
 CONFIG_TORTURE_TEST=n
 CONFIG_RCU_TORTURE_TEST=n
-CONFIG_DEBUG_INFO_BTF=n
 CONFIG_DYNAMIC_DEBUG=n
 CONFIG_DYNAMIC_DEBUG_CORE=n
 CONFIG_DEBUG_MISC=n
