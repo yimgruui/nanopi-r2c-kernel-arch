@@ -89,3 +89,11 @@ jobs:
             --ref "${{ github.event.repository.default_branch }}" \
             -f "pkgver=${{ steps.alarm_ver.outputs.pkgver }}" \
             -f "pkgrel=${{ steps.alarm_ver.outputs.pkgrel }}"
+
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2.1.0
+        with:
+          retain_days: 0
+          keep_minimum_runs: 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
