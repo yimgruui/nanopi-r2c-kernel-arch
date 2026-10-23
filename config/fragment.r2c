@@ -196,3 +196,9 @@ CONFIG_NLS_CODEPAGE_437=y
 CONFIG_NLS_ASCII=y
 CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
+
+# ---------------------------------------------------------------------------
+# lz4
+# ---------------------------------------------------------------------------
+CONFIG_ZRAM_BACKEND_LZ4=y
+CONFIG_CRYPTO_LZ4=y
