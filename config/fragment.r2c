@@ -2,9 +2,13 @@
 #
 # Invariant: this fragment keeps board/router features; trims live in fragment.prune.
 #
+# Merged AFTER fragment.prune. Actual build order: prune → r2c → olddefconfig.
+# This fragment wins on any conflicting symbols.
+#
 # Usage:
 #   cp <ALARM-config> .config
 #   make ARCH=arm64 olddefconfig
+#   scripts/kconfig/merge_config.sh -m .config fragment.prune
 #   scripts/kconfig/merge_config.sh -m .config fragment.r2c
 #   make ARCH=arm64 olddefconfig
 #
@@ -46,7 +50,8 @@ CONFIG_NFT_MASQ=y
 CONFIG_NFT_NAT=y
 CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
-CONFIG_WIREGUARD=y
+# WireGuard as module — vmlinux smaller, functionality preserved
+CONFIG_WIREGUARD=m
 CONFIG_USB_RTL8152=m
 CONFIG_USB_NET_DRIVERS=y
 
@@ -102,6 +107,8 @@ CONFIG_HID_BPF=n
 CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
 CONFIG_DEBUG_INFO_BTF=y
 CONFIG_DEBUG_INFO=y
+# reduced DWARF — keeps BTF intact, shrinks vmlinux debug footprint
+CONFIG_DEBUG_INFO_REDUCED=y
 
 # ---------------------------------------------------------------------------
 # SRv6 / LWT — SEG6_BPF is def_bool y derived from SEG6_LWTUNNEL, do not write =n
@@ -119,6 +126,36 @@ CONFIG_PPP_MPPE=m
 CONFIG_PPPOE=m
 CONFIG_PPP_ASYNC=m
 CONFIG_PPP_SYNC_TTY=m
+
+# ---------------------------------------------------------------------------
+# ksmbd — SMB3 kernel server (module; SMB3 dialects only —
+#   legacy algorithms ARC4/MD4/DES remain =n in fragment.prune)
+# Dependency ordering: prerequisites first, then the feature.
+# ---------------------------------------------------------------------------
+
+# --- transport prerequisites ---
+# INET / NF_CONNTRACK / NF_TABLES are already enabled above (router datapath).
+
+# --- server core: module form to keep vmlinux small ---
+CONFIG_SMB_SERVER=m
+
+# --- crypto prerequisites (required by SMB3 encryption / signing / hashing) ---
+CONFIG_CRYPTO_LIB_SHA256=y
+CONFIG_CRYPTO_AES=y
+CONFIG_CRYPTO_GCM=y
+CONFIG_CRYPTO_CCM=y
+CONFIG_CRYPTO_CMAC=y
+CONFIG_CRYPTO_HMAC=y
+CONFIG_CRYPTO_SHA256=y
+CONFIG_CRYPTO_SHA512=y
+
+# --- optional ARM64 CE acceleration (perf up / size up, off by default) ---
+#CONFIG_CRYPTO_AES_ARM64_CE=y
+#CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
+
+# --- explicitly disabled within ksmbd surface ---
+CONFIG_SMB_SERVER_SMBDIRECT=n
+CONFIG_SMB_SERVER_DEBUG=n
 
 # ---------------------------------------------------------------------------
 # USB host and storage
@@ -140,10 +177,9 @@ CONFIG_MMC_DW_ROCKCHIP=y
 CONFIG_SWAP=y
 CONFIG_ZRAM=m
 CONFIG_ZSMALLOC=m
-CONFIG_ZRAM_BACKEND_LZO=y
-CONFIG_ZRAM_DEF_COMP_LZORLE=y
-CONFIG_LZO_COMPRESS=m
-CONFIG_LZO_DECOMPRESS=m
+CONFIG_ZRAM_BACKEND_LZ4=y
+CONFIG_ZRAM_DEF_COMP_LZ4=y
+CONFIG_CRYPTO_LZ4=y
 
 # ---------------------------------------------------------------------------
 # Thermal, hwmon, and RTC
@@ -198,7 +234,7 @@ CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
 
 # ---------------------------------------------------------------------------
-# lz4
+# Size: compress modules on disk (decompressed at load time)
 # ---------------------------------------------------------------------------
-CONFIG_ZRAM_BACKEND_LZ4=y
-CONFIG_CRYPTO_LZ4=y
+CONFIG_MODULE_COMPRESS_XZ=y
+CONFIG_MODULE_DECOMPRESS=y
