@@ -2,22 +2,15 @@
 #
 # Invariant: this fragment keeps board/router features; trims live in fragment.prune.
 #
-# Merged AFTER fragment.prune. Actual build order: prune → r2c → olddefconfig.
-# This fragment wins on any conflicting symbols.
-#
 # Usage:
 #   cp <ALARM-config> .config
 #   make ARCH=arm64 olddefconfig
-#   scripts/kconfig/merge_config.sh -m .config fragment.prune
 #   scripts/kconfig/merge_config.sh -m .config fragment.r2c
 #   make ARCH=arm64 olddefconfig
 #
 # Dependency ordering (DO NOT REORDER):
 #   Each group writes prerequisites before dependents so olddefconfig never
 #   silently removes a symbol due to an unsatisfied depends-on chain.
-#
-# Build-contract symbols (verified against build script checks — DO NOT CHANGE):
-#   WIREGUARD=y, IKCONFIG=y, IKCONFIG_PROC=y
 
 # ---------------------------------------------------------------------------
 # Kernel identity
@@ -53,18 +46,9 @@ CONFIG_NFT_MASQ=y
 CONFIG_NFT_NAT=y
 CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
-# WireGuard: build contract requires =y (do not demote to =m)
 CONFIG_WIREGUARD=y
 CONFIG_USB_RTL8152=m
 CONFIG_USB_NET_DRIVERS=y
-
-# ---------------------------------------------------------------------------
-# IKCONFIG — embedded config (build contract: IKCONFIG_PROC=y exposes
-# /proc/config.gz; IKCONFIG_PROC depends on IKCONFIG, so enable the
-# prerequisite explicitly to pin the dependency chain)
-# ---------------------------------------------------------------------------
-CONFIG_IKCONFIG=y
-CONFIG_IKCONFIG_PROC=y
 
 # ---------------------------------------------------------------------------
 # BPF stack — prerequisites first, then features
@@ -104,7 +88,6 @@ CONFIG_NET_CLS_BPF=m
 CONFIG_NET_ACT_BPF=m
 
 # --- LSM registration: keep baseline list, append ,bpf ---
-#     Check baseline first: grep '^CONFIG_LSM=' <ALARM config>
 CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf"
 
 # --- explicitly disabled ---
@@ -114,18 +97,10 @@ CONFIG_HID_BPF=n
 
 # ---------------------------------------------------------------------------
 # Debug info + BTF (needed by eBPF / Landscape; compile-time dep: pahole/dwarves)
-#
-# Debug info is a Kconfig *choice*. If the baseline ALARM config carries
-# DEBUG_INFO_NONE=y or DEBUG_INFO_REDUCED=y, that member is kept (first enabled
-# in Kconfig order) and DEBUG_INFO_BTF vanishes entirely after olddefconfig.
-# Therefore: disable all competitors FIRST, then enable the target.
-# (Verified: both =n lines resolve cleanly on 7.3.1.)
 # ---------------------------------------------------------------------------
-CONFIG_DEBUG_INFO_NONE=n
-CONFIG_DEBUG_INFO_REDUCED=n
 CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
-CONFIG_DEBUG_INFO=y
 CONFIG_DEBUG_INFO_BTF=y
+CONFIG_DEBUG_INFO=y
 
 # ---------------------------------------------------------------------------
 # SRv6 / LWT — SEG6_BPF is def_bool y derived from SEG6_LWTUNNEL, do not write =n
@@ -136,43 +111,12 @@ CONFIG_IPV6_SEG6_LWTUNNEL=y
 # PPPoE (user-space: pppd or rp-pppoe)
 # ---------------------------------------------------------------------------
 CONFIG_PPP=m
-CONFIG_SLHC=m
 CONFIG_PPP_BSDCOMP=m
 CONFIG_PPP_DEFLATE=m
 CONFIG_PPP_MPPE=m
 CONFIG_PPPOE=m
 CONFIG_PPP_ASYNC=m
 CONFIG_PPP_SYNC_TTY=m
-
-# ---------------------------------------------------------------------------
-# ksmbd — SMB3 kernel server (module; SMB3 dialects only —
-#   legacy algorithms ARC4/MD4/DES remain =n in fragment.prune)
-# Dependency ordering: prerequisites first, then the feature.
-# ---------------------------------------------------------------------------
-
-# --- transport prerequisites ---
-# INET / NF_CONNTRACK / NF_TABLES are already enabled above (router datapath).
-
-# --- server core: module form to keep vmlinux small ---
-CONFIG_SMB_SERVER=m
-
-# --- crypto prerequisites (required by SMB3 encryption / signing / hashing) ---
-CONFIG_CRYPTO_LIB_SHA256=y
-CONFIG_CRYPTO_AES=y
-CONFIG_CRYPTO_GCM=y
-CONFIG_CRYPTO_CCM=y
-CONFIG_CRYPTO_CMAC=y
-CONFIG_CRYPTO_HMAC=y
-CONFIG_CRYPTO_SHA256=y
-CONFIG_CRYPTO_SHA512=y
-
-# --- optional ARM64 CE acceleration (perf up / size up, off by default) ---
-#CONFIG_CRYPTO_AES_ARM64_CE=y
-#CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
-
-# --- explicitly disabled within ksmbd surface ---
-CONFIG_SMB_SERVER_SMBDIRECT=n
-CONFIG_SMB_SERVER_DEBUG=n
 
 # ---------------------------------------------------------------------------
 # USB host and storage
@@ -186,8 +130,6 @@ CONFIG_USB_UAS=y
 
 # ---------------------------------------------------------------------------
 # MMC, block storage, compressed swap
-# LZ4 backend + LZ4 default compressor for zram.
-# LZO backend / LZO_COMPRESS / LZO_DECOMPRESS removed (volume saving).
 # ---------------------------------------------------------------------------
 CONFIG_MMC=y
 CONFIG_MMC_BLOCK=y
@@ -196,9 +138,10 @@ CONFIG_MMC_DW_ROCKCHIP=y
 CONFIG_SWAP=y
 CONFIG_ZRAM=m
 CONFIG_ZSMALLOC=m
-CONFIG_ZRAM_BACKEND_LZ4=y
-CONFIG_ZRAM_DEF_COMP_LZ4=y
-CONFIG_CRYPTO_LZ4=y
+CONFIG_ZRAM_BACKEND_LZO=y
+CONFIG_ZRAM_DEF_COMP_LZORLE=y
+CONFIG_LZO_COMPRESS=m
+CONFIG_LZO_DECOMPRESS=m
 
 # ---------------------------------------------------------------------------
 # Thermal, hwmon, and RTC
@@ -253,22 +196,14 @@ CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
 
 # ---------------------------------------------------------------------------
-# Size: compress modules on disk
-#
-# Kept COMMENTED OUT by default. First diagnose your kernel tree:
-#   grep -rnE 'config MODULE_COMPRESS|config MODULE_DECOMPRESS' kernel/module/Kconfig
-#
-# If ALL THREE symbols exist and MODULE_DECOMPRESS depends on MODULE_COMPRESS,
-# uncomment in prerequisite order (outer switch first):
-#   CONFIG_MODULE_COMPRESS=y       <- outer switch, prerequisite of the choice
-#   CONFIG_MODULE_COMPRESS_XZ=y    <- choice member
-#   CONFIG_MODULE_DECOMPRESS=y     <- load-time decompression support
-#
-# If MODULE_DECOMPRESS is absent from your tree, keep ALL THREE commented —
-# enabling compression without decompression produces .ko.xz the kernel
-# cannot load. Use install-time stripping instead:
-#   make INSTALL_MOD_STRIP=1 modules_install
+# ksmbd (SMB3 server) — depends/selects are auto-resolved by Kconfig;
+#   only the top-level tristate needs to be written.
+#   SMB_SERVER_SMBDIRECT stays unset (requires INFINIBAND, irrelevant on RK3328).
 # ---------------------------------------------------------------------------
-#CONFIG_MODULE_COMPRESS=y
-#CONFIG_MODULE_COMPRESS_XZ=y
-#CONFIG_MODULE_DECOMPRESS=y
+CONFIG_SMB_SERVER=m
+
+# ---------------------------------------------------------------------------
+# lz4
+# ---------------------------------------------------------------------------
+CONFIG_ZRAM_BACKEND_LZ4=y
+CONFIG_CRYPTO_LZ4=y
