@@ -103,12 +103,20 @@ CONFIG_HID_BPF=n
 
 # ---------------------------------------------------------------------------
 # Debug info + BTF (needed by eBPF / Landscape; compile-time dep: pahole/dwarves)
+#
+# Debug info is a Kconfig *choice*. If the baseline ALARM config carries
+# DEBUG_INFO_NONE=y or DEBUG_INFO_REDUCED=y, that member is kept (first enabled
+# in Kconfig order) and DEBUG_INFO_BTF vanishes entirely after olddefconfig.
+# Therefore: disable all competitors FIRST, then enable the target.
+#
+# If CONFIG_DEBUG_INFO_REDUCED=n itself triggers a new "unresolved" error
+# (symbol removed in your tree), delete only that one line.
 # ---------------------------------------------------------------------------
+CONFIG_DEBUG_INFO_NONE=n
+CONFIG_DEBUG_INFO_REDUCED=n
 CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
-CONFIG_DEBUG_INFO_BTF=y
 CONFIG_DEBUG_INFO=y
-# reduced DWARF — keeps BTF intact, shrinks vmlinux debug footprint
-CONFIG_DEBUG_INFO_REDUCED=y
+CONFIG_DEBUG_INFO_BTF=y
 
 # ---------------------------------------------------------------------------
 # SRv6 / LWT — SEG6_BPF is def_bool y derived from SEG6_LWTUNNEL, do not write =n
@@ -169,6 +177,8 @@ CONFIG_USB_UAS=y
 
 # ---------------------------------------------------------------------------
 # MMC, block storage, compressed swap
+# LZ4 backend + LZ4 default compressor for zram.
+# LZO backend / LZO_COMPRESS / LZO_DECOMPRESS removed (volume saving).
 # ---------------------------------------------------------------------------
 CONFIG_MMC=y
 CONFIG_MMC_BLOCK=y
@@ -234,7 +244,22 @@ CONFIG_NLS_ISO8859_1=y
 CONFIG_NLS_UTF8=y
 
 # ---------------------------------------------------------------------------
-# Size: compress modules on disk (decompressed at load time)
+# Size: compress modules on disk
+#
+# Kept COMMENTED OUT by default. First diagnose your kernel tree:
+#   grep -rnE 'config MODULE_COMPRESS|config MODULE_DECOMPRESS' kernel/module/Kconfig
+#
+# If ALL THREE symbols exist and MODULE_DECOMPRESS depends on MODULE_COMPRESS,
+# uncomment in prerequisite order (outer switch first):
+#   CONFIG_MODULE_COMPRESS=y       <- outer switch, prerequisite of the choice
+#   CONFIG_MODULE_COMPRESS_XZ=y    <- choice member
+#   CONFIG_MODULE_DECOMPRESS=y     <- load-time decompression support
+#
+# If MODULE_DECOMPRESS is absent from your tree, keep ALL THREE commented —
+# enabling compression without decompression produces .ko.xz the kernel
+# cannot load. Use install-time stripping instead:
+#   make INSTALL_MOD_STRIP=1 modules_install
 # ---------------------------------------------------------------------------
-CONFIG_MODULE_COMPRESS_XZ=y
-CONFIG_MODULE_DECOMPRESS=y
+#CONFIG_MODULE_COMPRESS=y
+#CONFIG_MODULE_COMPRESS_XZ=y
+#CONFIG_MODULE_DECOMPRESS=y
