@@ -1,5 +1,6 @@
 # NanoPi R2S (RK3328) router trim fragment on top of the R2S profile.
 # Invariant: keep the router contract; disable only board-irrelevant surface.
+# Merged BEFORE fragment.r2c (actual build order: prune → r2c → olddefconfig).
 #
 # Keep: Ethernet+USB-NIC routing, nftables/iptables, WireGuard, IPv6, PPPoE,
 # namespaces/cgroups/seccomp/BPF, Landlock, ext4/overlayfs, SD/MMC/eMMC,
@@ -12,7 +13,10 @@
 #   SECURITY, SECURITYFS, SECURITY_LANDLOCK,
 #   BPF, BPF_SYSCALL, BPF_JIT, BPF_LSM, BPF_EVENTS,
 #   DEBUG_INFO_BTF, MOTORCOMM_PHY, USB_RTL8152, USB_USBNET,
-#   PPP, PPPOE, IPV6_SEG6_LWTUNNEL, LSM
+#   PPP, PPPOE, IPV6_SEG6_LWTUNNEL, LSM,
+#   SMB_SERVER, CRYPTO_LIB_SHA256, CRYPTO_AES, CRYPTO_GCM,
+#   CRYPTO_CCM, CRYPTO_CMAC, CRYPTO_HMAC, CRYPTO_SHA256, CRYPTO_SHA512,
+#   ZRAM_BACKEND_LZ4, ZRAM_DEF_COMP_LZ4, CRYPTO_LZ4
 # NEVER write =n for def_bool symbols:
 #   IPV6_SEG6_BPF, GLOB (select'd by filesystems)
 # ---------------------------------------------------------------------------
@@ -250,7 +254,6 @@ CONFIG_NILFS2_FS=n
 CONFIG_BCACHEFS_FS=n
 CONFIG_CEPH_FS=n
 CONFIG_CIFS=n
-CONFIG_SMB_SERVER=n
 CONFIG_NFS_FS=n
 CONFIG_NFSD=n
 CONFIG_9P_FS=n
@@ -674,6 +677,12 @@ CONFIG_PROC_VMCORE=n
 CONFIG_PROC_VMCLEAK=n
 CONFIG_IKHEADERS=n
 
+# Firmware loader / diagnostics extras
+CONFIG_FW_LOADER_USER_HELPER=n
+CONFIG_FW_LOADER_USER_HELPER_FALLBACK=n
+CONFIG_MAGIC_SYSRQ=n
+CONFIG_IKCONFIG=n
+
 # mkinitcpio emits zstd only
 CONFIG_RD_GZIP=n
 CONFIG_RD_BZIP2=n
@@ -930,7 +939,6 @@ CONFIG_DM_LOG_WRITES=n
 CONFIG_DM_ZONED=n
 CONFIG_DM_INTEGRITY=n
 CONFIG_BLK_DEV_INTEGRITY=n
-CONFIG_ZRAM_BACKEND_LZ4=n
 CONFIG_ZRAM_BACKEND_LZ4HC=n
 CONFIG_ZRAM_BACKEND_ZSTD=n
 CONFIG_ZRAM_BACKEND_DEFLATE=n
@@ -1101,8 +1109,6 @@ CONFIG_CRYPTO_SM4_ARM64_CE_GCM=n
 CONFIG_CRYPTO_842=n
 CONFIG_CRYPTO_BLAKE2B=n
 CONFIG_CRYPTO_LZO=n
-CONFIG_CRYPTO_LZ4=n
-CONFIG_CRYPTO_LZ4HC=n
 CONFIG_CRYPTO_ZSTD=n
 CONFIG_XZ_DEC=n
 
@@ -1808,6 +1814,7 @@ CONFIG_TLS=n
 
 # ---------------------------------------------------------------------------
 # Tracing extras (BPF_EVENTS only needs FTRACE/TRACING/KPROBES — all in r2c)
+# UPROBES/UPROBE_EVENTS: userspace probing not needed for this profile
 # ---------------------------------------------------------------------------
 CONFIG_FUNCTION_GRAPH_TRACER=n
 CONFIG_IRQSOFF_TRACER=n
@@ -1818,6 +1825,8 @@ CONFIG_OSNOISE_TRACER=n
 CONFIG_TIMERLAT_TRACER=n
 CONFIG_MMIOTRACE=n
 CONFIG_FTRACE_MMIOTRACE=n
+CONFIG_UPROBES=n
+CONFIG_UPROBE_EVENTS=n
 
 # ---------------------------------------------------------------------------
 # Instrumentation and test code
