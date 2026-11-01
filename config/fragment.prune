@@ -7,7 +7,7 @@
 # USB storage/UAS, RK3328 thermal/cpufreq, and the USB host path.
 #
 # ---------------------------------------------------------------------------
-# NEVER disable these — required by fragment.r2c:
+# NEVER disable these — required by fragment.r2c / build contract:
 #   FTRACE, TRACING, FUNCTION_TRACER, TRACEPOINTS,
 #   KPROBES, KPROBE_EVENTS, PERF_EVENTS,
 #   SECURITY, SECURITYFS, SECURITY_LANDLOCK,
@@ -17,7 +17,8 @@
 #   PPP, PPPOE, IPV6_SEG6_LWTUNNEL, LSM,
 #   SMB_SERVER, CRYPTO_LIB_SHA256, CRYPTO_AES, CRYPTO_GCM,
 #   CRYPTO_CCM, CRYPTO_CMAC, CRYPTO_HMAC, CRYPTO_SHA256, CRYPTO_SHA512,
-#   ZRAM_BACKEND_LZ4, ZRAM_DEF_COMP_LZ4, CRYPTO_LZ4
+#   ZRAM_BACKEND_LZ4, ZRAM_DEF_COMP_LZ4, CRYPTO_LZ4,
+#   WIREGUARD (=y per build contract), IKCONFIG, IKCONFIG_PROC
 # NEVER write =n for def_bool symbols:
 #   IPV6_SEG6_BPF, GLOB (select'd by filesystems)
 # NEVER write =n for select'd symbols (value is overridden by Kconfig):
@@ -642,6 +643,9 @@ CONFIG_SPEAKUP=n
 
 # ---------------------------------------------------------------------------
 # Misc unused subsystems
+# (Removed here: IKCONFIG / MAGIC_SYSRQ / FW_LOADER_USER_HELPER — these were
+#  extra trims that violated the build contract or bought nothing; keep them
+#  at baseline values. IKCONFIG is explicitly =y in fragment.r2c.)
 # ---------------------------------------------------------------------------
 CONFIG_CAN=n
 CONFIG_THUNDERBOLT=n
@@ -680,12 +684,6 @@ CONFIG_UID16=n
 CONFIG_PROC_VMCORE=n
 CONFIG_PROC_VMCLEAK=n
 CONFIG_IKHEADERS=n
-
-# Firmware loader / diagnostics extras (volume & attack-surface savings)
-CONFIG_FW_LOADER_USER_HELPER=n
-CONFIG_FW_LOADER_USER_HELPER_FALLBACK=n
-CONFIG_MAGIC_SYSRQ=n
-CONFIG_IKCONFIG=n
 
 # mkinitcpio emits zstd only
 CONFIG_RD_GZIP=n
@@ -1034,7 +1032,7 @@ CONFIG_MRP=n
 
 # ---------------------------------------------------------------------------
 # Networking, crypto, and virtual router features
-# CRYPTO_LZ4=n removed — kept =y in fragment.r2c for zram / general use
+# CRYPTO_LZ4=n removed — kept =y in fragment.r2c for zram
 # ---------------------------------------------------------------------------
 CONFIG_RFS_ACCEL=n
 
@@ -1821,7 +1819,8 @@ CONFIG_TLS=n
 
 # ---------------------------------------------------------------------------
 # Tracing extras (BPF_EVENTS only needs FTRACE/TRACING/KPROBES — all in r2c)
-# UPROBES/UPROBE_EVENTS: userspace probing not needed for this profile
+# UPROBES/UPROBE_EVENTS intentionally NOT disabled — original contract keeps
+# them (Landscape/eBPF userspace-probing surface).
 # ---------------------------------------------------------------------------
 CONFIG_FUNCTION_GRAPH_TRACER=n
 CONFIG_IRQSOFF_TRACER=n
@@ -1832,8 +1831,6 @@ CONFIG_OSNOISE_TRACER=n
 CONFIG_TIMERLAT_TRACER=n
 CONFIG_MMIOTRACE=n
 CONFIG_FTRACE_MMIOTRACE=n
-CONFIG_UPROBES=n
-CONFIG_UPROBE_EVENTS=n
 
 # ---------------------------------------------------------------------------
 # Instrumentation and test code
