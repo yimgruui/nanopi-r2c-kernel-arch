@@ -15,6 +15,9 @@
 # Dependency ordering (DO NOT REORDER):
 #   Each group writes prerequisites before dependents so olddefconfig never
 #   silently removes a symbol due to an unsatisfied depends-on chain.
+#
+# Build-contract symbols (verified against build script checks — DO NOT CHANGE):
+#   WIREGUARD=y, IKCONFIG=y, IKCONFIG_PROC=y
 
 # ---------------------------------------------------------------------------
 # Kernel identity
@@ -50,9 +53,18 @@ CONFIG_NFT_MASQ=y
 CONFIG_NFT_NAT=y
 CONFIG_BRIDGE=y
 CONFIG_VLAN_8021Q=y
+# WireGuard: build contract requires =y (do not demote to =m)
 CONFIG_WIREGUARD=y
 CONFIG_USB_RTL8152=m
 CONFIG_USB_NET_DRIVERS=y
+
+# ---------------------------------------------------------------------------
+# IKCONFIG — embedded config (build contract: IKCONFIG_PROC=y exposes
+# /proc/config.gz; IKCONFIG_PROC depends on IKCONFIG, so enable the
+# prerequisite explicitly to pin the dependency chain)
+# ---------------------------------------------------------------------------
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
 
 # ---------------------------------------------------------------------------
 # BPF stack — prerequisites first, then features
@@ -107,9 +119,7 @@ CONFIG_HID_BPF=n
 # DEBUG_INFO_NONE=y or DEBUG_INFO_REDUCED=y, that member is kept (first enabled
 # in Kconfig order) and DEBUG_INFO_BTF vanishes entirely after olddefconfig.
 # Therefore: disable all competitors FIRST, then enable the target.
-#
-# If CONFIG_DEBUG_INFO_REDUCED=n itself triggers a new "unresolved" error
-# (symbol removed in your tree), delete only that one line.
+# (Verified: both =n lines resolve cleanly on 7.3.1.)
 # ---------------------------------------------------------------------------
 CONFIG_DEBUG_INFO_NONE=n
 CONFIG_DEBUG_INFO_REDUCED=n
