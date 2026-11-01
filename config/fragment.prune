@@ -12,13 +12,16 @@
 #   KPROBES, KPROBE_EVENTS, PERF_EVENTS,
 #   SECURITY, SECURITYFS, SECURITY_LANDLOCK,
 #   BPF, BPF_SYSCALL, BPF_JIT, BPF_LSM, BPF_EVENTS,
-#   DEBUG_INFO_BTF, MOTORCOMM_PHY, USB_RTL8152, USB_USBNET,
+#   DEBUG_INFO_BTF, DEBUG_INFO, DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT,
+#   MOTORCOMM_PHY, USB_RTL8152, USB_USBNET,
 #   PPP, PPPOE, IPV6_SEG6_LWTUNNEL, LSM,
 #   SMB_SERVER, CRYPTO_LIB_SHA256, CRYPTO_AES, CRYPTO_GCM,
 #   CRYPTO_CCM, CRYPTO_CMAC, CRYPTO_HMAC, CRYPTO_SHA256, CRYPTO_SHA512,
 #   ZRAM_BACKEND_LZ4, ZRAM_DEF_COMP_LZ4, CRYPTO_LZ4
 # NEVER write =n for def_bool symbols:
 #   IPV6_SEG6_BPF, GLOB (select'd by filesystems)
+# NEVER write =n for select'd symbols (value is overridden by Kconfig):
+#   NLS_UCS2_UTILS (selected by FAT/VFAT — =n only produces warnings)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -242,6 +245,7 @@ CONFIG_NET_VENDOR_SYNOPSYS=n
 
 # ---------------------------------------------------------------------------
 # Network and clustered filesystems
+# SMB_SERVER removed — ksmbd enabled as =m in fragment.r2c (do not disable)
 # ---------------------------------------------------------------------------
 CONFIG_BTRFS_FS=n
 CONFIG_XFS_FS=n
@@ -677,7 +681,7 @@ CONFIG_PROC_VMCORE=n
 CONFIG_PROC_VMCLEAK=n
 CONFIG_IKHEADERS=n
 
-# Firmware loader / diagnostics extras
+# Firmware loader / diagnostics extras (volume & attack-surface savings)
 CONFIG_FW_LOADER_USER_HELPER=n
 CONFIG_FW_LOADER_USER_HELPER_FALLBACK=n
 CONFIG_MAGIC_SYSRQ=n
@@ -806,6 +810,7 @@ CONFIG_UFS_FS=n
 
 # ---------------------------------------------------------------------------
 # NLS (keep 437/ASCII/ISO8859_1/UTF8 from r2c)
+# NLS_UCS2_UTILS line removed — selected by FAT/VFAT, =n is silently overridden
 # ---------------------------------------------------------------------------
 CONFIG_NLS_CODEPAGE_737=n
 CONFIG_NLS_CODEPAGE_775=n
@@ -852,7 +857,6 @@ CONFIG_NLS_MAC_ICELAND=n
 CONFIG_NLS_MAC_INUIT=n
 CONFIG_NLS_MAC_ROMANIAN=n
 CONFIG_NLS_MAC_TURKISH=n
-CONFIG_NLS_UCS2_UTILS=n
 
 # ---------------------------------------------------------------------------
 # PPS and GNSS
@@ -901,6 +905,7 @@ CONFIG_TMPFS_POSIX_ACL=n
 
 # ---------------------------------------------------------------------------
 # Block, device-mapper, and memory-backed storage
+# ZRAM_BACKEND_LZ4=n removed — LZ4 backend enabled in fragment.r2c
 # ---------------------------------------------------------------------------
 CONFIG_CDROM=n
 CONFIG_BLK_DEV_SR=n
@@ -1029,6 +1034,7 @@ CONFIG_MRP=n
 
 # ---------------------------------------------------------------------------
 # Networking, crypto, and virtual router features
+# CRYPTO_LZ4=n removed — kept =y in fragment.r2c for zram / general use
 # ---------------------------------------------------------------------------
 CONFIG_RFS_ACCEL=n
 
@@ -1109,6 +1115,7 @@ CONFIG_CRYPTO_SM4_ARM64_CE_GCM=n
 CONFIG_CRYPTO_842=n
 CONFIG_CRYPTO_BLAKE2B=n
 CONFIG_CRYPTO_LZO=n
+CONFIG_CRYPTO_LZ4HC=n
 CONFIG_CRYPTO_ZSTD=n
 CONFIG_XZ_DEC=n
 
