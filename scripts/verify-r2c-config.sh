@@ -12,13 +12,16 @@ CFG="${1:?path to .config required}"
 error_count=0
 
 require_value() {
-    local expected="$1" sym
+    local expected="$1" sym actual
     shift
     for sym in "$@"; do
-        grep -Eq "^${sym}=(${expected})$" "$CFG" || {
-            echo "Error: expected ${sym}=${expected}" >&2
-            return 1
-        }
+        if grep -Eq "^${sym}=(${expected})$" "$CFG"; then
+            continue
+        fi
+        # pipefail: an absent symbol makes grep fail, which must not abort set -e
+        actual="$(grep -E "^${sym}[=(]|^# ${sym} is not set" "$CFG" 2>/dev/null | head -1 || true)"
+        echo "Error: ${sym}: expected (${expected}), found ${actual:-nothing}" >&2
+        error_count=$((error_count + 1))
     done
 }
 
@@ -27,7 +30,6 @@ require_value y \
     CONFIG_STMMAC_PLATFORM \
     CONFIG_DWMAC_ROCKCHIP \
     CONFIG_MOTORCOMM_PHY \
-    CONFIG_REALTEK_PHY \
     CONFIG_WIREGUARD \
     CONFIG_NF_TABLES \
     CONFIG_NF_CONNTRACK \
@@ -178,9 +180,14 @@ require_value y \
 require_value m \
     CONFIG_NETFILTER_XT_MATCH_BPF
 
+# Profile contract: PPPoE WAN, the eBPF stack, and ksmbd (SMB_SERVER) are
+# required features of this kernel and must survive every ALARM rebase.
 require_value 'y|m' \
     CONFIG_PPP \
     CONFIG_PPPOE
+
+require_value m \
+    CONFIG_SMB_SERVER
 
 
 if [ "$error_count" -gt 0 ]; then

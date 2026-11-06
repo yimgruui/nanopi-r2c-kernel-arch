@@ -1,6 +1,15 @@
-# NanoPi R2C/R2S (RK3328) router profile on top of ArchLinuxARM linux-aarch64.
+# NanoPi R2C (RK3328) router profile on top of ArchLinuxARM linux-aarch64.
+# Derived from the upstream NanoPi R2S profile; the only board difference in
+# the kernel config is the WAN PHY (Motorcomm YT8521S instead of RTL8211E).
 #
 # Invariant: this fragment keeps board/router features; trims live in fragment.prune.
+# The two files are disjoint: prune never writes =n for a symbol enabled here.
+#
+# Required features (a change that drops any of these is a regression):
+#   * PPPoE WAN            -> CONFIG_PPP=m, CONFIG_PPPOE=m
+#   * eBPF tooling         -> BPF stack + CONFIG_DEBUG_INFO_BTF (needs pahole)
+#   * ksmbd (SMB3 server)  -> CONFIG_SMB_SERVER=m
+#   * R2C WAN PHY          -> CONFIG_MOTORCOMM_PHY=y
 #
 # Usage:
 #   cp <ALARM-config> .config
@@ -123,6 +132,11 @@ CONFIG_PPP_SYNC_TTY=m
 # ---------------------------------------------------------------------------
 CONFIG_USB_DWC2=y
 CONFIG_USB_DWC2_HOST=y
+# The on-board RTL8153 LAN port hangs off the dwc3 USB3 controller, so host
+# mode is required. Disabling USB gadget already collapses the mode choice to
+# host-only, but state it explicitly so an ALARM rebase cannot flip it back to
+# dual-role/gadget without this profile noticing.
+CONFIG_USB_DWC3_HOST=y
 CONFIG_SCSI=y
 CONFIG_BLK_DEV_SD=y
 CONFIG_USB_STORAGE=y

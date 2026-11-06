@@ -30,7 +30,7 @@ done
 
 echo "==> Merging baseline config: $(basename "$BASE")"
 cp "$BASE" "$KDIR/.config"
-make -C "$KDIR" ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}" olddefconfig >/dev/null
+make -C "$KDIR" ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE-aarch64-linux-gnu-}" olddefconfig >/dev/null
 
 declare -A EXPECTED_VAL
 
@@ -59,14 +59,19 @@ for frag in "${FRAGMENTS[@]}"; do
     apply_fragment "$frag"
 done
 
-make -C "$KDIR" ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}" olddefconfig >/dev/null
+make -C "$KDIR" ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE-aarch64-linux-gnu-}" olddefconfig >/dev/null
 
 error_count=0
 for key in "${!EXPECTED_VAL[@]}"; do
     val="${EXPECTED_VAL[$key]}"
     if [ "$val" = "n" ]; then
+        # A prune entry that olddefconfig keeps on means either a Kconfig
+        # select/dependency overrides it or the symbol was renamed. Both are
+        # drift: fragment.r2c owns the feature list, so =n must hold here.
         if grep -qE "^${key}=(y|m)$" "$KDIR/.config"; then
-            echo "Warning: ${key}=n requested but kept enabled (forced by Kconfig deps)" >&2
+            echo "Error: ${key}=n not honored after olddefconfig (forced by Kconfig select/deps)" >&2
+            echo "       actual: $(grep -E "^${key}=" "$KDIR/.config" | head -1 || true)" >&2
+            error_count=$((error_count + 1))
         fi
         continue
     fi
