@@ -118,3 +118,39 @@ jobs:
             --ref "${{ github.event.repository.default_branch }}" \
             -f "pkgver=${{ steps.alarm_ver.outputs.pkgver }}" \
             -f "pkgrel=${{ steps.alarm_ver.outputs.pkgrel }}"
+
+      # Keep the run history bounded without a third-party action: the API
+      # listing is paginated, filtered to completed runs, sorted by
+      # run_number/attempt, and everything past the newest three is deleted.
+      # Artifacts of deleted runs are freed with them.
+      - name: Prune old kernel build runs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          keep=3
+          runs="$(gh api --paginate \
+            --jq '.workflow_runs[] | select(.status == "completed") | "\(.run_number) \(.run_attempt) \(.id)"' \
+            "repos/$GH_REPO/actions/workflows/build-kernel.yml/runs?status=completed&per_page=100" \
+            || true)"
+          if [ -z "$runs" ]; then
+            echo "::warning::could not list kernel build runs; skipping prune"
+            exit 0
+          fi
+          mapfile -t ids < <(
+            printf '%s\n' "$runs" | sort -k1,1nr -k2,2nr | awk -v keep="$keep" 'NR > keep {print $3}'
+          )
+          if [ "${#ids[@]}" -eq 0 ]; then
+            echo "Nothing to prune: keeping the newest $keep completed build runs."
+            exit 0
+          fi
+          echo "Pruning ${#ids[@]} completed build run(s), keeping the newest $keep."
+          for id in "${ids[@]}"; do
+            if gh api --method DELETE "repos/$GH_REPO/actions/runs/$id" >/dev/null 2>&1; then
+              echo "  deleted run $id"
+            else
+              echo "::warning::could not delete run $id"
+            fi
+          done
