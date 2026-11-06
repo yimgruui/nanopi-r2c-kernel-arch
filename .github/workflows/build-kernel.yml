@@ -292,11 +292,61 @@ jobs:
             }
           done
           release_flags=()
+          ver="${tag#linux-nanopi-r2c-minimal-}"
           if [ "${{ needs.build.outputs.prerelease }}" = true ]; then
             release_flags+=(--prerelease)
-            notes="Unofficial NanoPi R2C minimal kernel ${tag} validation build. This branch build does not deploy the pacman repository. Source package and merged config are included."
+            notes="$(cat <<EOF
+          ### Validation build ${tag}
+
+          Unofficial NanoPi R2C (RK3328) kernel **${ver}**, built from branch
+          ${GITHUB_REF_NAME} with the ALARM linux-aarch64 config plus this
+          repository's R2C profile.
+
+          This is a test build: it is **not** published to the pacman repository
+          and does not deploy GitHub Pages. Install it explicitly on a test
+          device with pacman -U.
+
+          Assets: signed package, source tarball, config.merged (exact resolved
+          kernel config), SHA256SUMS, repository public key.
+          EOF
+          )"
           else
-            notes="Unofficial NanoPi R2C minimal kernel ${tag}. Pacman repo: https://yimgruui.github.io/nanopi-r2c-kernel-arch/aarch64. Source package and merged config are included."
+            notes="$(cat <<EOF
+          ### NanoPi R2C minimal kernel ${ver}
+
+          Unofficial Arch Linux ARM kernel for the FriendlyElec NanoPi R2C
+          (RK3328), rebuilt from the ALARM linux-aarch64 config plus this
+          repository's R2C router profile.
+
+          #### Features
+
+          - PPPoE WAN (PPP/PPPOE), eBPF stack with BTF, ksmbd in-kernel SMB3 server
+          - Motorcomm YT8521S WAN PHY and RTL8153 USB3 LAN (LED config from DT)
+          - nftables/iptables compatibility, WireGuard, IPv6, dm-crypt/LUKS,
+            zram, BBR/CAKE, Landlock
+          - Small footprint: single R2C DTB, RTL8153 driver as a module
+
+          #### Install
+
+          Add the repo to /etc/pacman.conf:
+
+              [nanopi-r2c-kernel-arch]
+              Server = https://yimgruui.github.io/nanopi-r2c-kernel-arch/aarch64
+              SigLevel = Required
+
+          Then trust the key and install:
+
+              sudo pacman-key --lsign-key D43FCE3212FD6ED05AAD4685FB554996DC1276E8
+              sudo pacman -Syu linux-nanopi-r2c-minimal
+
+          #### Assets
+
+          Signed package (pkg.tar.zst + .sig), makepkg source tarball,
+          config.merged (the exact resolved kernel config), SHA256SUMS, and the
+          repository public key. Rebuild command and source provenance are in
+          SOURCE_INFO.txt.
+          EOF
+          )"
           fi
 
           if gh release view --repo "$repo" "$tag" >/dev/null 2>&1; then
