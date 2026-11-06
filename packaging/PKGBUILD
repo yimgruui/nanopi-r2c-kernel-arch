@@ -7,9 +7,12 @@
 
 pkgname=linux-nanopi-r2c-minimal
 pkgbase=linux-nanopi-r2c-minimal
-pkgver=7.1.1
-pkgrel=1
-_srcname=linux-7.1
+# Placeholders kept at the last published version. scripts/prepare-build-dir.sh
+# rewrites pkgver/pkgrel/_srcname from the current ALARM linux-aarch64 PKGBUILD,
+# so a normal build never uses these values directly.
+pkgver=7.3.1
+pkgrel=2
+_srcname=linux-7.3
 _desc="NanoPi R2C router profile (ALARM-aligned)"
 arch=('aarch64')
 url="https://github.com/torvalds/linux"

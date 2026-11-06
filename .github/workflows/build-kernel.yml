@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 defaults:
- run:
+  run:
     shell: bash
 
 env:
@@ -33,6 +33,7 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     container:
       image: archlinux:latest
     steps:
@@ -240,6 +241,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Deploy pacman repo to GitHub Pages
         id: deployment
@@ -257,6 +259,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Download release files
         uses: actions/download-artifact@v8

@@ -2,11 +2,11 @@ name: Check for new ALARM kernel
 
 on:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '15 8,20 * * *'
   workflow_dispatch:
     inputs:
       force_build:
-        description: Trigger kernel build even if ALARM pkgver unchanged
+        description: Trigger kernel build even if unchanged or the previous build failed
         type: boolean
         default: false
 
@@ -18,6 +18,53 @@ jobs:
   poll:
     runs-on: ubuntu-latest
     steps:
+      - name: Check latest completed kernel build
+        id: last_build
+        if: github.event_name != 'workflow_dispatch' || !inputs.force_build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          # A pending retry or a test-branch build must not hide a failed release build.
+          latest_completed_build() {
+            gh api --method GET \
+              "repos/$GH_REPO/actions/workflows/build-kernel.yml/runs" \
+              --paginate --slurp \
+              -H 'Cache-Control: no-cache' \
+              -f branch="$DEFAULT_BRANCH" -F per_page=100 "$@" |
+              jq -c --arg branch "$DEFAULT_BRANCH" '
+                [.[].workflow_runs[]
+                  | select(.head_branch == $branch and .status == "completed")
+                  | {run_number, run_attempt, updated_at, conclusion, html_url}]
+                | max_by([.run_number, .run_attempt, .updated_at]) // {}'
+          }
+          # Filter and order locally instead of trusting a single filtered API result.
+          last_build="$(latest_completed_build)"
+          if [ "$last_build" = '{}' ]; then
+            exit 0
+          fi
+          if [ "$(jq -r '.conclusion' <<< "$last_build")" != success ]; then
+            # Recheck via a different query before reporting a possibly stale failure.
+            confirmed="$(latest_completed_build -f status=completed)"
+            # An older response must not erase a newer failed run or rerun attempt.
+            last_build="$(jq -cn --argjson first "$last_build" --argjson second "$confirmed" \
+              '[$first, $second] | max_by([.run_number, .run_attempt, .updated_at])')"
+          fi
+          conclusion="$(jq -r '.conclusion' <<< "$last_build")"
+          if [ "$conclusion" != success ]; then
+            url="$(jq -r '.html_url' <<< "$last_build")"
+            printf '::error::Automatic builds paused: latest completed build on %s ended with %s. See %s\n' "$DEFAULT_BRANCH" "$conclusion" "$url"
+            {
+              printf '### Automatic kernel builds are paused\n\n'
+              printf 'The latest completed build on `%s` [ended with `%s`](%s).\n\n' "$DEFAULT_BRANCH" "$conclusion" "$url"
+              printf 'Fix the failure, then manually run the build on `%s` or run this check with `force_build` enabled.\n' "$DEFAULT_BRANCH"
+              printf 'Automatic builds resume after a successful build. No build was triggered.\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - id: alarm_ver
         run: |
           set -euo pipefail
@@ -61,26 +108,8 @@ jobs:
             --jq '[.[] | select(.status != "completed")] | length')"
           [ "$count" -eq 0 ] && echo "busy=false" >> "$GITHUB_OUTPUT" || echo "busy=true" >> "$GITHUB_OUTPUT"
 
-      - name: Check latest completed kernel build
-        id: last_build
-        if: steps.release.outputs.exists != 'true' && !(github.event_name == 'workflow_dispatch' && inputs.force_build)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          conclusion="$(gh run list \
-            --repo "${{ github.repository }}" \
-            --workflow build-kernel.yml \
-            --status completed \
-            --limit 1 \
-            --json conclusion \
-            --jq '.[0].conclusion // "none"')"
-          case "$conclusion" in
-            failure|cancelled|timed_out|action_required) echo "blocked=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "blocked=false" >> "$GITHUB_OUTPUT" ;;
-          esac
-
       - name: Trigger kernel build
-        if: (steps.release.outputs.exists != 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)) && steps.active_builds.outputs.busy != 'true' && steps.last_build.outputs.blocked != 'true'
+        if: (steps.release.outputs.exists != 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)) && steps.active_builds.outputs.busy != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -89,11 +118,3 @@ jobs:
             --ref "${{ github.event.repository.default_branch }}" \
             -f "pkgver=${{ steps.alarm_ver.outputs.pkgver }}" \
             -f "pkgrel=${{ steps.alarm_ver.outputs.pkgrel }}"
-
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2.1.0
-        with:
-          retain_days: 0
-          keep_minimum_runs: 3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

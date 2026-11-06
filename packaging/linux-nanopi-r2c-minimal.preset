@@ -1,4 +1,4 @@
-# mkinitcpio preset for NanoPi R2C kernel package (linux-nanopi-r2s-minimal)
+# mkinitcpio preset for NanoPi R2C kernel package (linux-nanopi-r2c-minimal)
 
 ALL_kver="%KERNVER%"
 
