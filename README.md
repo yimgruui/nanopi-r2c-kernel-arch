@@ -13,6 +13,10 @@ baseline, then applies a small NanoPi R2C router profile on top:
 
 **GitHub repository:** [`yimgruui/nanopi-r2c-kernel-arch`](https://github.com/yimgruui/nanopi-r2c-kernel-arch)
 
+**Related project:** [`yimgruui/nanopi-r2c-arch`](https://github.com/yimgruui/nanopi-r2c-arch)
+builds the SD-card images (mainline TPL/SPL + TF-A + U-Boot), and its
+`minimal-kernel` image variant installs exactly this package.
+
 **Disclaimer:** Packages are provided as-is, without warranty of fitness or
 successful operation on your hardware. Builds follow rolling Arch Linux ARM and
 upstream kernel updates; behavior may change between releases.
@@ -59,7 +63,8 @@ The R2C DTB inherits `rk3328-nanopi-r2.dtsi`, so the LED labels and the
 
 ## Install From Repo
 
-Add the pacman repo:
+Add the pacman repo (the same snippet ships as
+[packaging/nanopi-r2c.repo](packaging/nanopi-r2c.repo)):
 
 ```ini
 [nanopi-r2c-kernel-arch]
@@ -81,11 +86,43 @@ sudo pacman -Syu linux-nanopi-r2c-minimal
 ```
 
 Release assets, the pacman database, and `SHA256SUMS` are published on both
-GitHub Releases and GitHub Pages. Verify manually if you install a package file:
+GitHub Releases and GitHub Pages.
+
+## Verify A Download
+
+Every release ships the package signature (`*.pkg.tar.zst.sig`), the repository
+public key, the merged kernel config, and `SHA256SUMS`. Check both layers before
+installing a hand-downloaded package:
 
 ```bash
+gh release download --repo yimgruui/nanopi-r2c-kernel-arch \
+  --pattern '*.pkg.tar.zst*' --pattern '*.pub' --pattern 'SHA256SUMS' --pattern 'config.merged'
 sha256sum -c SHA256SUMS
+gpg --import nanopi-r2c-kernel-arch.pub
+gpg --verify linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig linux-nanopi-r2c-minimal-*.pkg.tar.zst
+# gpg: Good signature from "nanopi-r2c-kernel-arch"
 ```
+
+`config.merged` is the exact resolved `.config` the package was built from, so
+`diff <(zcat /proc/config.gz | sort) <(sort config.merged)` is a quick way to
+confirm what a booted router is actually running.
+
+## Versioning And Rebuilds
+
+The package version follows ALARM `linux-aarch64` (`pkgver`-`pkgrel`), and the
+kernel release is `<pkgver>-<pkgrel>-nanopi-r2c-minimal`.
+
+When the profile in this repository changes but ALARM has not moved, the package
+must be republished with a higher `pkgrel`; otherwise pacman sees the same
+version and never upgrades. Trigger such a rebuild manually:
+
+```bash
+gh workflow run build-kernel.yml --repo yimgruui/nanopi-r2c-kernel-arch \
+  --ref main -f pkgver=<same-as-ALARM> -f pkgrel=<previous+1>
+```
+
+The workflow rewrites `pkgver`/`pkgrel`/`_srcname` from those inputs, so the
+resulting tag, package, and Pages entry all carry the new `pkgrel`.
 
 ## Build Locally
 
@@ -195,14 +232,64 @@ nanopi-r2c-kernel-arch/
 ## CI
 
 - `build-kernel.yml` builds and signs kernel packages and publishes GitHub Releases.
-- `check-kernel.yml` checks ALARM for updates and can trigger a build.
+- `check-kernel.yml` polls ALARM twice a day and triggers a build when a new
+  `linux-aarch64` version has no release yet.
 - Default-branch builds also deploy the pacman repository through a GitHub Pages artifact.
 - Branch builds publish a prerelease and workflow artifact for validation without deploying GitHub Pages.
+- If the latest default-branch build failed, the poll fails loudly and pauses
+  automatic builds instead of retrying forever. Fix the failure, then run
+  `build-kernel.yml` manually (or the poll with `force_build`) to resume.
 
 GitHub Pages must use the GitHub Actions source, and the `github-pages`
 environment must allow the default branch. The signing key is provided as the
 `NANOPI_R2C_KERNEL_PACMAN_KEY` repository secret (base64 of the exported secret
 key).
+
+## Troubleshooting
+
+**No WAN link / link flaps.** Check that the YT8521S PHY is bound:
+
+```bash
+dmesg | grep -iE 'yt8521|motorcomm|eth'
+ethtool <wan-iface> | grep -E 'Speed|Link detected'
+# the PHY driver must be built in, not a module
+zcat /proc/config.gz | grep CONFIG_MOTORCOMM_PHY   # =y
+```
+
+**LAN port missing.** The RTL8153 is a USB3 device behind `dwc3`; it appears a
+few seconds after boot, once `r8152` is loaded:
+
+```bash
+lsmod | grep r8152
+dmesg | grep -iE 'r8152|rtl8153|firmware'
+```
+
+If the firmware line reports a missing `rtl_nic/rtl8153b-2.fw`, install
+`linux-firmware-realtek` (a package optdepend).
+
+**ksmbd does not start.** The server is a module plus userspace tooling:
+
+```bash
+modprobe ksmbd
+pacman -S ksmbd-tools
+systemctl enable --now ksmbd
+zcat /proc/config.gz | grep CONFIG_SMB_SERVER       # =m
+```
+
+**PPPoE does not come up.** `pppd` needs the module and the kernel ppp unit:
+
+```bash
+modprobe pppoe
+zcat /proc/config.gz | grep -E 'CONFIG_(PPP|PPPOE)=' # =m
+```
+
+**Kernel replaces the stock one but does not boot.** Confirm the image builder
+or your own `boot.scr` points at `/boot/Image` and
+`/boot/dtbs/rockchip/rk3328-nanopi-r2c.dtb`; the package does not install the R2S
+DTB or `Image.gz`.
+
+**A rebuild is not offered by pacman.** Same `pkgver`-`pkgrel` as the installed
+package means no upgrade; see [Versioning And Rebuilds](#versioning-and-rebuilds).
 
 ## License
 
