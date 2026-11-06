@@ -239,9 +239,11 @@ nanopi-r2c-kernel-arch/
 - If the latest default-branch build failed, the poll fails loudly and pauses
   automatic builds instead of retrying forever. Fix the failure, then run
   `build-kernel.yml` manually (or the poll with `force_build`) to resume.
-- The poll also deletes older `build-kernel.yml` runs, keeping the three most
-  recent completed ones; deleting a run frees its cached sources and package
-  artifacts, so the repository does not grow without bound.
+- The poll also trims run history: for both `build-kernel.yml` and
+  `check-kernel.yml` only the three most recent runs are kept, older completed
+  runs are deleted (an in-progress run is never removed). Deleting a build run
+  frees its artifacts and cached kernel sources, so the repository does not
+  grow without bound.
 
 GitHub Pages must use the GitHub Actions source, and the `github-pages`
 environment must allow the default branch. The signing key is provided as the
