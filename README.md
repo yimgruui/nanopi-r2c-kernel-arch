@@ -9,6 +9,9 @@ baseline, then applies a small NanoPi R2C router profile on top:
 * PPPoE WAN (PPPoE is the primary WAN mode on this box),
 * the eBPF stack, including BTF type information,
 * ksmbd, the in-kernel SMB3 server,
+* removable-media filesystems (NTFS3, btrfs, XFS, F2FS, ISO9660/UDF, HFS+,
+  SquashFS and the FAT codepages), so the image automounter can mount almost
+  any USB disk,
 * the Motorcomm YT8521S WAN PHY and the RTL8153 USB3 LAN port.
 
 **GitHub repository:** [`yimgruui/nanopi-r2c-kernel-arch`](https://github.com/yimgruui/nanopi-r2c-kernel-arch)
@@ -107,6 +110,30 @@ gpg --verify linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig linux-nanopi-r2c-minimal
 `diff <(zcat /proc/config.gz | sort) <(sort config.merged)` is a quick way to
 confirm what a booted router is actually running.
 
+## Filesystems
+
+The kernel carries both the router's local filesystems and the formats the USB
+automounter in [`nanopi-r2c-arch`](https://github.com/yimgruui/nanopi-r2c-arch)
+may encounter:
+
+| Format | Config | Build |
+|--------|--------|-------|
+| ext4, VFAT | `CONFIG_EXT4_FS`, `CONFIG_VFAT_FS` | built-in (ALARM baseline) |
+| exFAT, FUSE | `CONFIG_EXFAT_FS`, `CONFIG_FUSE_FS` | module (ALARM baseline) |
+| NTFS | `CONFIG_NTFS3_FS`, `CONFIG_NTFS3_LZX_XPRESS` | module |
+| btrfs | `CONFIG_BTRFS_FS` | module |
+| XFS | `CONFIG_XFS_FS` | module |
+| F2FS | `CONFIG_F2FS_FS` | module |
+| ISO9660 (Joliet/ZISOFS), UDF | `CONFIG_ISO9660_FS`, `CONFIG_UDF_FS` | module |
+| HFS, HFS+ | `CONFIG_HFS_FS`, `CONFIG_HFSPLUS_FS` | module |
+| SquashFS | `CONFIG_SQUASHFS` | module |
+
+The FAT codepages (437/850/852/866/932/936/949/950/1250/1251), ISO-8859-1/2/5/
+7/9/15 and UTF-8 are enabled; the automounter mounts VFAT with
+`iocharset=utf8`. NTFS can also be mounted through the `ntfs-3g` FUSE helper
+shipped by the image, which is the fallback when only userspace support is
+available.
+
 ## Versioning And Rebuilds
 
 The package version follows ALARM `linux-aarch64` (`pkgver`-`pkgrel`), and the
@@ -197,8 +224,9 @@ RK3328 boot path (RK I2C PMIC/regulators, Rockchip MMC/eMMC, USB2/USB3 host,
 onboard GMAC, internal USB3 RTL8153, Motorcomm WAN PHY), nftables/iptables
 compatibility, broad VPN/tunnel/ipset support, WireGuard, IPv6, PPPoE, ksmbd,
 AES-based dm-crypt/LUKS, optional zram swap, Cubic/BBR, Landlock, the eBPF stack
-with BTF, 32-bit userspace compatibility, ext4/overlayfs/exfat/FUSE,
-thermal/cpufreq, GPIO LEDs, and the reset button.
+with BTF, 32-bit userspace compatibility, ext4/overlayfs/exfat/FUSE plus the
+removable-media filesystems (NTFS3, btrfs, XFS, F2FS, ISO9660/UDF, HFS+,
+SquashFS), thermal/cpufreq, GPIO LEDs, and the reset button.
 
 `fragment.prune` is applied first and only disables: desktop/media/wireless/
 virtualization support, SATA/AHCI, USB gadget mode, non-R2C SoC and device
