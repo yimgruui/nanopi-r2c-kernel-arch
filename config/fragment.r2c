@@ -203,43 +203,25 @@ CONFIG_CPU_FREQ_THERMAL=y
 # ---------------------------------------------------------------------------
 # Removable-media filesystems
 # ---------------------------------------------------------------------------
-# ext4, VFAT, exFAT, overlayfs and FUSE come from the ALARM baseline.  The
-# appliance automounter must be able to mount whatever filesystem a USB disk
-# carries, so add the other common disk formats as modules.
+# ext4, VFAT, exFAT, overlayfs and FUSE come from the ALARM baseline.  Add only
+# the common USB-disk filesystems; HFS/HFS+, ISO9660/UDF and SquashFS are rare
+# on this appliance and stay disabled to keep the kernel package small.
 CONFIG_NTFS3_FS=m
 CONFIG_NTFS3_LZX_XPRESS=y
 CONFIG_BTRFS_FS=m
 CONFIG_XFS_FS=m
 CONFIG_F2FS_FS=m
-CONFIG_HFS_FS=m
-CONFIG_HFSPLUS_FS=m
-CONFIG_ISO9660_FS=m
-CONFIG_JOLIET=y
-CONFIG_ZISOFS=y
-CONFIG_UDF_FS=m
-CONFIG_SQUASHFS=m
 
 # ---------------------------------------------------------------------------
 # NLS
 # ---------------------------------------------------------------------------
 CONFIG_NLS=y
 CONFIG_NLS_CODEPAGE_437=y
-CONFIG_NLS_CODEPAGE_850=m
-CONFIG_NLS_CODEPAGE_852=m
-CONFIG_NLS_CODEPAGE_866=m
-CONFIG_NLS_CODEPAGE_932=m
+# Common Chinese FAT codepages; UTF-8 (below) covers modern media.
 CONFIG_NLS_CODEPAGE_936=m
-CONFIG_NLS_CODEPAGE_949=m
 CONFIG_NLS_CODEPAGE_950=m
-CONFIG_NLS_CODEPAGE_1250=m
-CONFIG_NLS_CODEPAGE_1251=m
 CONFIG_NLS_ASCII=y
 CONFIG_NLS_ISO8859_1=y
-CONFIG_NLS_ISO8859_2=m
-CONFIG_NLS_ISO8859_5=m
-CONFIG_NLS_ISO8859_7=m
-CONFIG_NLS_ISO8859_9=m
-CONFIG_NLS_ISO8859_15=m
 CONFIG_NLS_UTF8=y
 
 # ---------------------------------------------------------------------------
