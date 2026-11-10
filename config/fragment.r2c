@@ -9,7 +9,6 @@
 #   * PPPoE WAN            -> CONFIG_PPP=m, CONFIG_PPPOE=m
 #   * eBPF tooling         -> BPF stack + CONFIG_DEBUG_INFO_BTF (needs pahole)
 #   * ksmbd (SMB3 server)  -> CONFIG_SMB_SERVER=m
-#   * NFS server (v3/v4)   -> CONFIG_NFSD=m, CONFIG_NFSD_V4=y
 #   * R2C WAN PHY          -> CONFIG_MOTORCOMM_PHY=y
 #
 # Usage:
@@ -231,16 +230,6 @@ CONFIG_NLS_UTF8=y
 #   SMB_SERVER_SMBDIRECT stays unset (requires INFINIBAND, irrelevant on RK3328).
 # ---------------------------------------------------------------------------
 CONFIG_SMB_SERVER=m
-
-# ---------------------------------------------------------------------------
-# NFS server (v3 and v4) — the R2C exports the USB media share to LAN players.
-#   CONFIG_NFSD selects SUNRPC/EXPORTFS/LOCKD/NFS_ACL_SUPPORT; NFSD_V4 selects
-#   RPCSEC_GSS_KRB5, FS_POSIX_ACL and GRACE_PERIOD.  NFSv2 is deliberately off;
-#   every client in this profile speaks v3 or v4.
-# ---------------------------------------------------------------------------
-CONFIG_NFSD=m
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFSD_V4=y
 
 # ---------------------------------------------------------------------------
 # lz4

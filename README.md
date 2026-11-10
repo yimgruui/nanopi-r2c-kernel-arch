@@ -9,8 +9,6 @@ baseline, then applies a small NanoPi R2C router profile on top:
 * PPPoE WAN (PPPoE is the primary WAN mode on this box),
 * the eBPF stack, including BTF type information,
 * ksmbd, the in-kernel SMB3 server,
-* the NFS server (`NFSD`, NFSv3 and NFSv4) used by the image's read-only
-  media export,
 * common removable-media filesystems (NTFS3, btrfs, XFS, F2FS and the Chinese
   FAT codepages), so the image automounter can mount common USB disks,
 * the Motorcomm YT8521S WAN PHY and the RTL8153 USB3 LAN port.
@@ -133,26 +131,6 @@ the automounter mounts VFAT with `iocharset=utf8`. NTFS can also be mounted
 through the `ntfs-3g` FUSE helper shipped by the image, which is the fallback
 when only userspace support is available.
 
-## NFS Server
-
-The profile enables the kernel NFS server as a module:
-
-| Option | Value | Why |
-|--------|-------|-----|
-| `CONFIG_NFSD` | `m` | nfsd.ko, loaded by `nfs-server.service` |
-| `CONFIG_NFSD_V3_ACL` | `y` | NFSv3 ACL support |
-| `CONFIG_NFSD_V4` | `y` | NFSv4, including the pseudo-root used by the image |
-
-NFSv2 is left disabled. `NFSD` selects the SUNRPC, exportfs and lockd pieces
-it needs; `NFSD_V4` additionally selects RPCSEC GSS, POSIX ACL support and the
-grace-period helper. The package does **not** install `nfs-utils` or any
-exports — the image does that. The test image and a booted router should show:
-
-```bash
-modinfo nfsd
-cat /proc/config.gz | zgrep -E 'CONFIG_NFSD(_V3_ACL|_V4)?='
-```
-
 ## Versioning And Rebuilds
 
 The package version follows ALARM `linux-aarch64` (`pkgver`-`pkgrel`), and the
@@ -223,7 +201,7 @@ After boot:
 ```bash
 uname -r                 # ...-nanopi-r2c-minimal
 ip link                  # WAN (end0/eth0) + LAN (eth1/enp...) present
-cat /proc/config.gz | zgrep -E 'CONFIG_(MOTORCOMM_PHY|PPPOE|SMB_SERVER|NFSD|DEBUG_INFO_BTF)'
+cat /proc/config.gz | zgrep -E 'CONFIG_(MOTORCOMM_PHY|PPPOE|SMB_SERVER|DEBUG_INFO_BTF)'
 ```
 
 Serial console: `ttyS2` at `1500000` baud.
@@ -242,7 +220,7 @@ disjoint fragments:
 RK3328 boot path (RK I2C PMIC/regulators, Rockchip MMC/eMMC, USB2/USB3 host,
 onboard GMAC, internal USB3 RTL8153, Motorcomm WAN PHY), nftables/iptables
 compatibility, broad VPN/tunnel/ipset support, WireGuard, IPv6, PPPoE, ksmbd,
-NFSD (v3/v4), AES-based dm-crypt/LUKS, optional zram swap, Cubic/BBR, Landlock, the eBPF stack
+AES-based dm-crypt/LUKS, optional zram swap, Cubic/BBR, Landlock, the eBPF stack
 with BTF, 32-bit userspace compatibility, ext4/overlayfs/exfat/FUSE plus the common
 removable-media filesystems (NTFS3, btrfs, XFS, F2FS), thermal/cpufreq, GPIO
 LEDs, and the reset button.
@@ -262,8 +240,8 @@ kernel.
 
 `scripts/merge-config.sh` fails if a requested config symbol is not honored
 after `olddefconfig`, for `=y`/`=m` **and** for `=n`; `scripts/verify-r2c-config.sh`
-checks the R2C-critical options (including PPPoE, BTF/eBPF, ksmbd, and NFSD)
-before compile.
+checks the R2C-critical options (including PPPoE, BTF/eBPF, and ksmbd) before
+compile.
 
 ## Layout
 

@@ -12,9 +12,8 @@
 #     there. The two files must stay disjoint: a symbol listed as =n here and
 #     as =y/=m there is a contract violation and is rejected by
 #     scripts/merge-config.sh in strict mode.
-#   * Never disable: PPP/PPPOE (PPPoE WAN), SMB_SERVER (ksmbd), NFSD (NFS
-#     server), the BPF stack, MOTORCOMM_PHY (R2C WAN PHY is a YT8521S),
-#     FTRACE/TRACING/FUNCTION_TRACER/
+#   * Never disable: PPP/PPPOE (PPPoE WAN), SMB_SERVER (ksmbd), the BPF stack,
+#     MOTORCOMM_PHY (R2C WAN PHY is a YT8521S), FTRACE/TRACING/FUNCTION_TRACER/
 #     TRACEPOINTS/KPROBES/PERF_EVENTS, SECURITY/SECURITYFS/LANDLOCK,
 #     DEBUG_INFO_BTF, IPV6_SEG6_LWTUNNEL, ZRAM_BACKEND_LZ4/CRYPTO_LZ4.
 #   * Never write =n for def_bool symbols that are select'd (e.g. GLOB,
@@ -273,7 +272,7 @@ CONFIG_BCACHEFS_FS=n
 CONFIG_CEPH_FS=n
 CONFIG_CIFS=n
 CONFIG_NFS_FS=n
-# NFSD is enabled in fragment.r2c (the appliance exports /media/DATA/Video).
+CONFIG_NFSD=n
 CONFIG_9P_FS=n
 CONFIG_AFS_FS=n
 CONFIG_CODA_FS=n

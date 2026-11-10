@@ -201,11 +201,6 @@ require_value 'y|m' \
 require_value m \
     CONFIG_SMB_SERVER
 
-# NFS server for the LAN media export (/media/DATA/Video).  NFSD_V3_ACL and
-# NFSD_V4 are bools, so they must resolve to y rather than m.
-require_value m CONFIG_NFSD
-require_value y CONFIG_NFSD_V3_ACL CONFIG_NFSD_V4
-
 
 if [ "$error_count" -gt 0 ]; then
     echo "Error: $error_count config check(s) failed" >&2
