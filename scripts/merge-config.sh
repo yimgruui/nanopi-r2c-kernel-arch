@@ -68,7 +68,7 @@ done
 # CONFIG_STRICT_SYMBOLS=1 once the profile is known clean.
 kconfig_symbols="$(mktemp)"
 trap 'rm -f "$kconfig_symbols"' EXIT
-{ grep -rhoE '^[[:space:]]*(menuconfig|config)[[:space:]]+[A-Z0-9_]+' \
+{ grep -rhoE '^[[:space:]]*(menuconfig|config)[[:space:]]+[A-Za-z0-9_]+' \
     --include='Kconfig*' "$KDIR" || true; } |
     awk '{print $NF}' | sort -u > "$kconfig_symbols"
 
