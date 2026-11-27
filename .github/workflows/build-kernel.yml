@@ -11,6 +11,10 @@ on:
         description: Package pkgrel
         type: string
         default: '1'
+      allow_version_override:
+        description: Allow pkgver different from Arch Linux ARM (config would not match)
+        type: boolean
+        default: false
 
 concurrency:
   group: build-kernel
@@ -38,7 +42,7 @@ jobs:
       image: archlinux:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install dependencies
         run: |
@@ -55,6 +59,12 @@ jobs:
 
       - name: Fetch ALARM metadata
         run: ./scripts/fetch-alarm-sources.sh
+
+      - name: Record build environment
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          { pacman -Q; echo; uname -a; } | sort > build/toolchain-packages.txt
 
       - name: Resolve version
         id: ver
@@ -78,6 +88,16 @@ jobs:
               echo "Error: invalid pkgrel: $pr" >&2
               exit 1
             }
+
+            # The kernel config always comes from the current ALARM
+            # linux-aarch64 PKGBUILD.  Building an older pkgver against it
+            # produces a package that is not what its version claims.
+            if [ "$pv" != "$pkgver" ] && [ "${{ inputs.allow_version_override }}" != "true" ]; then
+              echo "Error: requested pkgver $pv does not match ALARM's current $pkgver" >&2
+              echo "       Re-run with allow_version_override=true only if you understand" >&2
+              echo "       that the config baseline no longer matches the kernel version." >&2
+              exit 1
+            fi
 
             IFS=. read -r _major _minor _rest <<< "$pv"
             pkgver="$pv"
@@ -119,7 +139,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Cache kernel sources
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/linux-${{ steps.ver.outputs.series }}.tar.xz
@@ -129,7 +149,7 @@ jobs:
             kernel-src-linux-${{ steps.ver.outputs.series }}-
 
       - name: Cache compiler artifacts (ccache)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /github/home/.ccache
           key: ccache-aarch64-minimal-linux-${{ steps.ver.outputs.series }}-${{ steps.ver.outputs.pkgver }}-${{ hashFiles('build/alarm.config', 'config/fragment.*', 'packaging/PKGBUILD', 'packaging/*.patch', 'scripts/merge-config.sh', 'scripts/prepare-build-dir.sh') }}
@@ -190,44 +210,51 @@ jobs:
             ./scripts/write-source-info.sh
 
       - name: Prepare release files
+        env:
+          REPO_PUBKEY_FILE: keys/nanopi-r2c-kernel-arch.pub
         run: |
           set -euo pipefail
+
           ./scripts/publish-repo.sh
-          cp build/SOURCE_INFO.txt repo/aarch64/
-          cp build/config.merged repo/aarch64/config.merged
+
+          # Flat staging directory: every asset is uploaded with its basename,
+          # so the checksum file must reference bare filenames to be usable by
+          # `sha256sum -c` after download.
+          rm -rf release
+          mkdir -p release
+          cp build/linux-nanopi-r2c-minimal-*.pkg.tar.zst \
+             build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig \
+             build/linux-nanopi-r2c-minimal-*.src.tar.gz \
+             build/SOURCE_INFO.txt build/config.merged build/toolchain-packages.txt \
+             release/
+          cp LICENSES/*.txt release/
+          cp keys/nanopi-r2c-kernel-arch.pub release/
+
+          (
+            cd release
+            sha256sum ./* > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          gpg --batch --yes --armor --detach-sign \
+            --local-user "${PACMAN_KEY_ID:?}" \
+            release/SHA256SUMS
+
+          # The pacman repository gets the same metadata for the Pages site.
+          cp build/SOURCE_INFO.txt build/config.merged build/toolchain-packages.txt \
+            repo/aarch64/
           mkdir -p repo/aarch64/LICENSES
           cp LICENSES/*.txt repo/aarch64/LICENSES/
-          (
-            cd repo/aarch64
-            sha256sum linux-nanopi-r2c-minimal-*.pkg.tar.zst \
-              SOURCE_INFO.txt config.merged LICENSES/*.txt > SHA256SUMS
-          )
-          sha256sum build/linux-nanopi-r2c-minimal-*.pkg.tar.zst \
-            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig \
-            build/linux-nanopi-r2c-minimal-*.src.tar.gz \
-            build/SOURCE_INFO.txt build/config.merged LICENSES/*.txt \
-            > build/SHA256SUMS
-          [ ! -f keys/nanopi-r2c-kernel-arch.pub ] || cp keys/nanopi-r2c-kernel-arch.pub repo/aarch64/
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.release.outputs.artifact_name }}
           if-no-files-found: error
-          path: |
-            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst
-            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig
-            build/linux-nanopi-r2c-minimal-*.src.tar.gz
-            build/SHA256SUMS
-            build/SOURCE_INFO.txt
-            build/config.merged
-            LICENSES/*.txt
-            repo/aarch64/
-            keys/nanopi-r2c-kernel-arch.pub
+          path: release/
 
       - name: Upload pacman repo for GitHub Pages
         if: github.ref_name == github.event.repository.default_branch
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ./repo
 
@@ -245,7 +272,7 @@ jobs:
     steps:
       - name: Deploy pacman repo to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   publish_release:
     if: >-
@@ -258,13 +285,23 @@ jobs:
       - deploy_pages
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Download release files
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.build.outputs.artifact_name }}
+          path: release
+
+      - name: Attest package provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            release/*.pkg.tar.zst
+            release/*.src.tar.gz
 
       - name: Create GitHub Release
         env:
@@ -276,15 +313,17 @@ jobs:
           repo="${GITHUB_REPOSITORY:?}"
           sha="${GITHUB_SHA:?}"
           assets=(
-            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst
-            build/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig
-            build/linux-nanopi-r2c-minimal-*.src.tar.gz
-            build/SHA256SUMS
-            build/SOURCE_INFO.txt
-            build/config.merged
-            LICENSES/*.txt
-            keys/nanopi-r2c-kernel-arch.pub
+            release/linux-nanopi-r2c-minimal-*.pkg.tar.zst
+            release/linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig
+            release/linux-nanopi-r2c-minimal-*.src.tar.gz
+            release/SHA256SUMS
+            release/SHA256SUMS.asc
+            release/SOURCE_INFO.txt
+            release/config.merged
+            release/toolchain-packages.txt
+            release/*.txt
           )
+          assets+=( release/nanopi-r2c-kernel-arch.pub )
           for asset in "${assets[@]}"; do
             [ -f "$asset" ] || {
               echo "Error: missing release asset: $asset" >&2
@@ -307,7 +346,7 @@ jobs:
           device with pacman -U.
 
           Assets: signed package, source tarball, config.merged (exact resolved
-          kernel config), SHA256SUMS, repository public key.
+          kernel config), SHA256SUMS + SHA256SUMS.asc, repository public key.
           EOF
           )"
           else
@@ -316,7 +355,7 @@ jobs:
 
           Unofficial Arch Linux ARM kernel for the FriendlyElec NanoPi R2C
           (RK3328), rebuilt from the ALARM linux-aarch64 config plus this
-          repository's R2C router profile.
+          repository's R2C board profile.
 
           #### Features
 
@@ -342,9 +381,9 @@ jobs:
           #### Assets
 
           Signed package (pkg.tar.zst + .sig), makepkg source tarball,
-          config.merged (the exact resolved kernel config), SHA256SUMS, and the
-          repository public key. Rebuild command and source provenance are in
-          SOURCE_INFO.txt.
+          config.merged (the exact resolved kernel config), SHA256SUMS with its
+          detached signature (SHA256SUMS.asc), and the repository public key.
+          Rebuild command and source provenance are in SOURCE_INFO.txt.
           EOF
           )"
           fi

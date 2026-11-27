@@ -1,0 +1,51 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+          python3 -m pip install --user yamllint pyyaml
+
+      - name: Shell syntax
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -rl '^#!.*bash' scripts/ || true)
+          [ "${#files[@]}" -gt 0 ] || { echo "no shell scripts found" >&2; exit 1; }
+          bash -n "${files[@]}"
+          echo "bash -n: ${#files[@]} file(s) OK"
+
+      - name: ShellCheck
+        run: shellcheck --severity=warning --external-sources scripts/*.sh
+
+      - name: YAML
+        run: |
+          set -euo pipefail
+          yamllint -c .yamllint .
+          python3 - <<'PY'
+          import glob
+          import yaml
+          for path in glob.glob(".github/workflows/*.yml"):
+              with open(path, encoding="utf-8") as fh:
+                  yaml.safe_load(fh)
+              print(f"parsed {path}")
+          PY

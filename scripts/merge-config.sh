@@ -33,10 +33,67 @@ cp "$BASE" "$KDIR/.config"
 make -C "$KDIR" ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE-aarch64-linux-gnu-}" olddefconfig >/dev/null
 
 declare -A EXPECTED_VAL
+declare -A KEY_SOURCE
+
+# Validate the fragments before touching .config: duplicates make the merge
+# order-dependent, and a symbol owned by both files violates the profile
+# contract (fragment.prune only disables, fragment.r2c enables).
+parse_fragment() {
+    local frag="$1" line key val lineno=0 name
+    name="$(basename "$frag")"
+    while IFS= read -r line || [ -n "$line" ]; do
+        lineno=$((lineno + 1))
+        line="${line%%#*}"
+        line="$(printf '%s\n' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        [[ -z "$line" || "$line" != CONFIG_*=* ]] && continue
+        key="${line%%=*}"
+        val="${line#*=}"
+        if [ -n "${KEY_SOURCE[$key]:-}" ]; then
+            echo "Error: ${key} appears in both ${KEY_SOURCE[$key]} and ${name}:${lineno}" >&2
+            echo "       fragment.prune and fragment.r2c must stay disjoint." >&2
+            exit 1
+        fi
+        KEY_SOURCE["$key"]="${name}:${lineno}"
+        EXPECTED_VAL["$key"]="$val"
+    done < "$frag"
+}
+
+for frag in "${FRAGMENTS[@]}"; do
+    parse_fragment "$frag"
+done
+
+# Symbols that were removed or renamed upstream make a prune entry silently
+# useless.  Check the fragment symbol set against the Kconfig tree that is
+# about to be built; CI can turn the warning into a hard failure with
+# CONFIG_STRICT_SYMBOLS=1 once the profile is known clean.
+kconfig_symbols="$(mktemp)"
+trap 'rm -f "$kconfig_symbols"' EXIT
+{ grep -rhoE '^[[:space:]]*(menuconfig|config)[[:space:]]+[A-Z0-9_]+' \
+    --include='Kconfig*' "$KDIR" || true; } |
+    awk '{print $NF}' | sort -u > "$kconfig_symbols"
+
+if [ ! -s "$kconfig_symbols" ]; then
+    echo "Warning: no Kconfig files found under $KDIR; skipping symbol existence check" >&2
+else
+    missing=0
+    for key in "${!EXPECTED_VAL[@]}"; do
+        if ! grep -qxF "${key#CONFIG_}" "$kconfig_symbols"; then
+            echo "Warning: ${KEY_SOURCE[$key]}: ${key} is not defined by this kernel's Kconfig tree" >&2
+            missing=$((missing + 1))
+        fi
+    done
+    if [ "$missing" -gt 0 ]; then
+        if [ "${CONFIG_STRICT_SYMBOLS:-0}" = "1" ]; then
+            echo "Error: ${missing} fragment symbol(s) no longer exist (CONFIG_STRICT_SYMBOLS=1)" >&2
+            echo "       Drop them or re-map them in config/fragment.*" >&2
+            exit 1
+        fi
+        echo "       (warning only; set CONFIG_STRICT_SYMBOLS=1 to make this fatal)" >&2
+    fi
+fi
 
 apply_fragment() {
-    local frag="$1"
-    local key val sym
+    local frag="$1" key val sym
     echo "==> Applying $(basename "$frag")..."
     while IFS= read -r line || [ -n "$line" ]; do
         line="${line%%#*}"
@@ -51,7 +108,6 @@ apply_fragment() {
             n) "$KDIR/scripts/config" --file "$KDIR/.config" --keep-case --disable "$sym" ;;
             *) "$KDIR/scripts/config" --file "$KDIR/.config" --keep-case --set-val "$sym" "$val" ;;
         esac
-        EXPECTED_VAL["$key"]="$val"
     done < "$frag"
 }
 

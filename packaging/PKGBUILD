@@ -17,7 +17,7 @@ _desc="NanoPi R2C router profile (ALARM-aligned)"
 arch=('aarch64')
 url="https://github.com/torvalds/linux"
 license=('GPL-2.0-only')
-depends=('coreutils' 'kmod' 'mkinitcpio>=0.7')
+depends=('coreutils' 'kmod' 'mkinitcpio>=0.7' 'zstd')
 optdepends=('linux-firmware-realtek: RTL8153 USB Ethernet firmware')
 provides=("linux=${pkgver}" "linux-aarch64=${pkgver}" "WIREGUARD-MODULE")
 conflicts=('linux' 'linux-aarch64')
@@ -38,12 +38,16 @@ source=(
     'r8152-led-config-from-of.patch'
     'rk3328-nanopi-r2c-r8153-led-data.patch'
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 if [[ $pkgver != ${_srcname#linux-} ]]; then
     source+=("patch-${pkgver}.xz")
-    sha256sums+=('SKIP')
 fi
+
+# Rewritten with the real hashes by scripts/prepare-build-dir.sh before every
+# build: the kernel tarball/patch hashes are checked against the ALARM
+# PKGBUILD, the generated files are hashed locally.  A published package never
+# uses these placeholders.
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 export ARCH=arm64
 export CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}"

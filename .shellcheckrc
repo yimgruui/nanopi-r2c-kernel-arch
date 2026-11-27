@@ -1,0 +1,4 @@
+# Workflow scripts source build metadata generated at build time; shellcheck
+# cannot resolve those paths here.
+shell=bash
+disable=SC1091,SC2034,SC2154

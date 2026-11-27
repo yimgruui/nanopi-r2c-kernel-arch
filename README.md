@@ -4,7 +4,7 @@
 **FriendlyElec NanoPi R2C** (Rockchip RK3328, 1 GB DDR4) on Arch Linux ARM.
 
 The package tracks the Arch Linux ARM `linux-aarch64` version and config
-baseline, then applies a small NanoPi R2C router profile on top:
+baseline, then applies a small NanoPi R2C board profile on top:
 
 * PPPoE WAN (PPPoE is the primary WAN mode on this box),
 * the eBPF stack, including BTF type information,
@@ -88,7 +88,10 @@ sudo pacman -Syu linux-nanopi-r2c-minimal
 ```
 
 Release assets, the pacman database, and `SHA256SUMS` are published on both
-GitHub Releases and GitHub Pages.
+GitHub Releases and GitHub Pages. `SHA256SUMS` covers the package, its
+signature, the source package, `SOURCE_INFO.txt`, `config.merged`,
+`toolchain-packages.txt` and the license texts, and ships with a detached
+`SHA256SUMS.asc` made by the repository signing key.
 
 ## Verify A Download
 
@@ -98,11 +101,21 @@ installing a hand-downloaded package:
 
 ```bash
 gh release download --repo yimgruui/nanopi-r2c-kernel-arch \
-  --pattern '*.pkg.tar.zst*' --pattern '*.pub' --pattern 'SHA256SUMS' --pattern 'config.merged'
+  --pattern '*.pkg.tar.zst*' --pattern '*.pub' --pattern 'SHA256SUMS*' \
+  --pattern 'config.merged' --pattern 'SOURCE_INFO.txt'
 sha256sum -c SHA256SUMS
 gpg --import nanopi-r2c-kernel-arch.pub
+gpg --verify SHA256SUMS.asc SHA256SUMS
 gpg --verify linux-nanopi-r2c-minimal-*.pkg.tar.zst.sig linux-nanopi-r2c-minimal-*.pkg.tar.zst
 # gpg: Good signature from "nanopi-r2c-kernel-arch"
+```
+
+`pkg.tar.zst` files are also attested by the build workflow, which binds the
+package digest to the exact workflow run and commit:
+
+```bash
+gh attestation verify linux-nanopi-r2c-minimal-*.pkg.tar.zst \
+  --repo yimgruui/nanopi-r2c-kernel-arch
 ```
 
 `config.merged` is the exact resolved `.config` the package was built from, so
@@ -147,6 +160,29 @@ gh workflow run build-kernel.yml --repo yimgruui/nanopi-r2c-kernel-arch \
 
 The workflow rewrites `pkgver`/`pkgrel`/`_srcname` from those inputs, so the
 resulting tag, package, and Pages entry all carry the new `pkgrel`.
+
+The workflow refuses a `pkgver` that differs from ALARM's current one, because
+the config baseline always comes from ALARM `HEAD`; pass
+`allow_version_override=true` only when you accept that the config no longer
+matches the kernel version.
+
+The repository only ever serves the newest build. If a kernel regresses, install
+the previous `pkg.tar.zst` from its GitHub Release with `pacman -U` and pin it
+with `IgnorePkg = linux-nanopi-r2c-minimal` until a fixed build is published.
+
+## Source Integrity
+
+`linux-*.tar.xz` and `patch-*.xz` are downloaded from kernel.org at build time.
+Both are checked against the `md5sums` that ALARM publishes in its
+`linux-aarch64` PKGBUILD (ALARM does not publish sha256 hashes), and the build
+aborts on any mismatch, including a stale cached download. `scripts/prepare-build-dir.sh`
+then rewrites the generated PKGBUILD with the sha256 of every source actually
+built, so the signed package metadata and the release `SHA256SUMS` carry hashes
+that are stronger than the md5 check and verifiable offline against the tarball.
+
+The five ALARM kernel patches (0001–0005) are intentionally not carried: they
+fix unrelated boards and this profile builds from the same source with its own
+patch set.
 
 ## Build Locally
 
@@ -213,8 +249,8 @@ disjoint fragments:
 
 | File | Purpose |
 |------|---------|
-| [config/fragment.r2c](config/fragment.r2c) | R2C board and router features to keep |
-| [config/fragment.prune](config/fragment.prune) | Subsystems not needed for this headless router target |
+| [config/fragment.r2c](config/fragment.r2c) | R2C board and networking features to keep |
+| [config/fragment.prune](config/fragment.prune) | Subsystems not needed for this headless appliance target |
 
 `fragment.r2c` is applied last and owns everything the profile needs: the
 RK3328 boot path (RK I2C PMIC/regulators, Rockchip MMC/eMMC, USB2/USB3 host,
@@ -229,8 +265,11 @@ LEDs, and the reset button.
 virtualization support, SATA/AHCI, USB gadget mode, non-R2C SoC and device
 drivers, legacy filesystems, partition parsers, crypto/netfilter helpers, niche
 routing and virtual networking, optional storage layers, and debug/test code.
-The two files never list the same symbol, so a prune entry that does not stick
-is a real error rather than silent drift.
+The two files must stay disjoint: `scripts/merge-config.sh` rejects a symbol
+listed twice, including once in each file, before it writes any config. It also
+warns when a fragment symbol no longer exists in the kernel's Kconfig tree
+(renamed or removed upstream); set `CONFIG_STRICT_SYMBOLS=1` to make that fatal
+once the profile is known clean.
 
 The internal RTL8153 driver is built as a module so it loads after the root
 filesystem is available and can read `rtl_nic/rtl8153b-2.fw` from
@@ -251,14 +290,18 @@ nanopi-r2c-kernel-arch/
 ├── packaging/              # PKGBUILD, mkinitcpio preset/config, DTS+r8152 patches
 ├── scripts/                # fetch / merge / verify / build / publish
 ├── LICENSES/
-└── .github/workflows/
+└── .github/workflows/        # build-kernel, check-kernel, lint
 ```
 
 ## CI
 
-- `build-kernel.yml` builds and signs kernel packages and publishes GitHub Releases.
+- `build-kernel.yml` builds and signs kernel packages, signs `SHA256SUMS`, and
+  publishes GitHub Releases with build provenance attestations.
 - `check-kernel.yml` polls ALARM twice a day and triggers a build when a new
-  `linux-aarch64` version has no release yet.
+  `linux-aarch64` version has no complete release yet (a release missing
+  `SHA256SUMS`/`SHA256SUMS.asc` is rebuilt).
+- `lint.yml` runs `bash -n`, shellcheck, `python3 -m py_compile` and a YAML
+  parse over the scripts and workflows on every push and pull request.
 - Default-branch builds also deploy the pacman repository through a GitHub Pages artifact.
 - Branch builds publish a prerelease and workflow artifact for validation without deploying GitHub Pages.
 - If the latest default-branch build failed, the poll fails loudly and pauses
@@ -327,6 +370,6 @@ Kernel and driver patches: GPL-2.0-only. Devicetree patch and packaging
 scripts: GPL-2.0-or-later. License texts are included in `LICENSES/`.
 
 Release assets include the standard makepkg source package
-`linux-nanopi-r2c-minimal-<pkgver>-<pkgrel>.src.tar.gz`. The GitHub Pages
-pacman directory includes `SOURCE_INFO.txt`, `config.merged`, and a link to that
-package.
+`linux-nanopi-r2c-minimal-<pkgver>-<pkgrel>.src.tar.gz` plus `LICENSES/`. The
+GitHub Pages pacman directory includes `SOURCE_INFO.txt`, `config.merged`,
+`toolchain-packages.txt`, `LICENSES/`, and a link to that source package.
