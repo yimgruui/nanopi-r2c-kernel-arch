@@ -321,9 +321,10 @@ jobs:
             release/SOURCE_INFO.txt
             release/config.merged
             release/toolchain-packages.txt
-            release/*.txt
           )
           assets+=( release/nanopi-r2c-kernel-arch.pub )
+          # Globs can overlap (e.g. *.txt); GitHub rejects duplicate asset names.
+          mapfile -t assets < <(printf '%s\n' "${assets[@]}" | awk '!seen[$0]++')
           for asset in "${assets[@]}"; do
             [ -f "$asset" ] || {
               echo "Error: missing release asset: $asset" >&2
