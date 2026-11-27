@@ -215,6 +215,7 @@ Useful environment variables:
 | `SKIP_ALARM_FETCH` | `0`; set `1` only for cached CI/local rebuilds |
 | `PACMAN_KEY_PATH`, `PACMAN_KEY_ID` | unset; set both to sign packages and the repo |
 | `PUBLISH_REPO` | `0`; set `1` to run `scripts/publish-repo.sh` after the build |
+| `CONFIG_STRICT_SYMBOLS` | `0`; set `1` to fail when a fragment symbol is gone from Kconfig (CI sets `1`) |
 
 Note that `CONFIG_DEBUG_INFO_BTF` implies `CONFIG_DEBUG_INFO`, so a from-scratch
 build is noticeably slower and needs a few GB of free space for the build tree.
@@ -267,9 +268,10 @@ drivers, legacy filesystems, partition parsers, crypto/netfilter helpers, niche
 routing and virtual networking, optional storage layers, and debug/test code.
 The two files must stay disjoint: `scripts/merge-config.sh` rejects a symbol
 listed twice, including once in each file, before it writes any config. It also
-warns when a fragment symbol no longer exists in the kernel's Kconfig tree
-(renamed or removed upstream); set `CONFIG_STRICT_SYMBOLS=1` to make that fatal
-once the profile is known clean.
+rejects a fragment symbol that no longer exists in the kernel's Kconfig tree
+(renamed or removed upstream). CI always builds with `CONFIG_STRICT_SYMBOLS=1`,
+so an upstream rename fails the build instead of leaving a dead entry; a local
+build without that variable only warns.
 
 The internal RTL8153 driver is built as a module so it loads after the root
 filesystem is available and can read `rtl_nic/rtl8153b-2.fw` from
