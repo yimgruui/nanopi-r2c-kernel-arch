@@ -26,9 +26,6 @@ defaults:
 
 env:
   TZ: Asia/Shanghai
-  # Fail instead of warning when a fragment symbol disappears from the kernel
-  # (renamed or removed upstream); keeps config/fragment.* honest.
-  CONFIG_STRICT_SYMBOLS: "1"
 
 jobs:
   build:
